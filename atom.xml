@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://ntsilverwing.github.io/blog/</id>
+    <title>宇宙中的粒子</title>
+    <updated>2025-09-25T01:02:23.706Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://ntsilverwing.github.io/blog/"/>
+    <link rel="self" href="https://ntsilverwing.github.io/blog/atom.xml"/>
+    <subtitle>随想、碎念、燧知</subtitle>
+    <logo>https://ntsilverwing.github.io/blog/images/avatar.png</logo>
+    <icon>https://ntsilverwing.github.io/blog/favicon.ico</icon>
+    <rights>All rights reserved 2025, 宇宙中的粒子</rights>
+    <entry>
+        <title type="html"><![CDATA[Ryujinx（龙神）模拟器如何用CE修改器]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ryujinxlong-shen-mo-ni-qi-ru-he-yong-ce-xiu-gai-qi/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ryujinxlong-shen-mo-ni-qi-ru-he-yong-ce-xiu-gai-qi/">
+        </link>
+        <updated>2025-09-23T20:48:02.000Z</updated>
+        <summary type="html"><![CDATA[<p>找不到对应游戏的金手指？找到了金手指又无法生效？这个时候就只能用Cheat Engine来修改了~</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>找不到对应游戏的金手指？找到了金手指又无法生效？这个时候就只能用Cheat Engine来修改了~</p>
+<!-- more -->
+<p>然而……如果用Ryujinx模拟的话，CE修改是找不到真实地址的。</p>
+<p>“那，你可以用yuzu啊！”<br>
+确实，用柚子的话，CE正常修改是可以找到真实地址的。但由于全球最强的任地狱法务部，柚子已经没有可用更新了，所以它在游戏支持度和模拟效果上，没有龙神表现的那么好。（虽然，龙神也被干了，但还是有在持续更新的……希望，可以坚持下去！）</p>
+<p>好了，总之我就是要用龙神就对了。那么，如何让CE可以正常找到真实地址呢？</p>
+<p>很简单：<br>
+在System-&gt;Memory Manager Mode的设置下，把内存管理模式改为Software就可以了！</p>
+<p>OK，就这么简单，然后CE就可以正常修改了。</p>
+<p>如果配置比较菜，那么改成software后，FPS会变的特别低，甚至到无法正常游戏的程度。那么，最好就是修改后马上保存，然后重新把内存管理模式改回去。</p>
+<p>以上是准备修改“浪漫沙加2 七英雄的复仇”时遇到的问题，在网上找了一遍并尝试后，这是最靠谱儿的方法了。<br>
+btw：这游戏1.1版本的金手指在龙神下没有一个管用的！淦！</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[如何让ollama支持老款AMD显卡]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ru-he-rang-ollama-zhi-chi-lao-kuan-amd-xian-qia/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ru-he-rang-ollama-zhi-chi-lao-kuan-amd-xian-qia/">
+        </link>
+        <updated>2025-09-16T19:03:16.000Z</updated>
+        <summary type="html"><![CDATA[<p>有一块RX 5600，想用来做一些AI方面的小实验，但是ollama官方默认不支持老款AMD显卡，不过还要有一些民间改版可以用。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>有一块RX 5600，想用来做一些AI方面的小实验，但是ollama官方默认不支持老款AMD显卡，不过还要有一些民间改版可以用。</p>
+<!-- more -->
+<p>分享一下win10系统下具体的实操过程以及一些坑。</p>
+<p>废话不多说，以下是具体步骤：<br>
+1、运行ollama后，先右键图标，view log一下。<br>
+查看server.log文件，找到大约第八行，有一条msg“amdgpu is not supported”，这就代表当前显卡不被支持。然后再看后边具体的显卡型号，比如我的是gpu_type=gfx1010:xnack- 。ok，记下来即可。</p>
+<p>2、退出ollama，然后到github找到“ollama-for-amd”这个项目（https://github.com/likelovewant/ollama-for-amd），直接去release里找到最新的版本下载。<br>
+下载安装版或者压缩版都可以，就是一个覆盖过程。我下载的是解压版。找到ollama具体的安装目录，然后把压缩包里的东西直接覆盖到安装目录下即可。</p>
+<p>3、然后再到github找“ROCmLibs-for-gfx1103-AMD780M-APU”这个项目（https://github.com/likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU），到release中下载最新版。<br>
+当然，最好看一下具体支撑自己gpu type的版本。我的最新版有支持，所以直接下最新的。下载完毕后解压，找到ollama安装目录，直接将解压文件copy至对应的目录下。</p>
+<p>4、重新运行ollama，再看下server.log文件。<br>
+还是第八行，如果有看到name参数后有自己显卡的具体名称，则代表已经支撑了。<br>
+然后随便运行一个模型，然后用ollama ps命令看一下，如果有看到processor有类似“39%/61% CPU/GPU”，那就确定GPU有参与到运行了。如果还是100%CPU，那就是失败，再找原因吧~</p>
+<p>好了，至此可以跑下具体模型，观察下gpu占用情况了。</p>
+<p>有一些使用上的感受/坑，记录下。<br>
+1、整体速度上有变快，但显卡整体还是拉胯，能有多明显也谈不上，跑一下小模型（比如：deepseek14b）可能还能看出来，跑稍微大一些的（如：openai的oss20b）那还是挺慢的。</p>
+<p>2、大模型一定要装在ssd中！机械硬盘的载入速度太慢了！</p>
+<p>3、如果ollama有升级，建议不要更新！当然，这个比较难。目前没有特别好的办法。<br>
+方法1：将ollama目录设置为只读。不过这会影响日志写入，并产生其它问题。<br>
+方法2：防火墙层面断掉ollama的互联网链接。这个问题就是载入模型后无法联网了。不过如果纯本地模型的话，这个倒也OK。<br>
+总之，如果有更新导致amd显卡支持问题，那就按照上述办法覆盖一遍吧。</p>
+<p>4、整体来说AMD显卡——尤其老显卡的模型运行效率不太行，玩儿AI的话，还是建议换N卡吧~</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[关于在Mihon上Suwayomi的安装与使用]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/guan-yu-zai-mihon-shang-de-suwayomi-shi-yong/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/guan-yu-zai-mihon-shang-de-suwayomi-shi-yong/">
+        </link>
+        <updated>2024-10-27T07:46:18.000Z</updated>
+        <summary type="html"><![CDATA[<p>最近发现一自制源，需要通过Suwayomi来访问，之前在用Tachiyomi时没有安装过这个插件。今天捯饬了下，花了一些时间，顺便也发现了一些相关的还挺有趣的网站，于是觉得还是记录下比较好。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>最近发现一自制源，需要通过Suwayomi来访问，之前在用Tachiyomi时没有安装过这个插件。今天捯饬了下，花了一些时间，顺便也发现了一些相关的还挺有趣的网站，于是觉得还是记录下比较好。</p>
+<!-- more -->
+<h2>名词解释</h2>
+首先几个名词科普：
+<p><a href="https://github.com/mihonapp/mihon" target="_blank" rel="noopener">Mihon</a>/<a href="https://tachiyomi.org/" target="_blank" rel="noopener">Tachiyomi</a>：看漫画的app。Tachiyomi已经不更新了，而Mihon属于正统分支续作。<br>
+<a href="https://github.com/Suwayomi" target="_blank" rel="noopener">Suwayomi</a>：属于Tachiyomi的官方插件，也可以独立运行。</p>
+<br>
+<h2>安装插件</h2>
+原本在mihon中安装Suwayomi是个非常简单的事儿。只需要添加官方源，找到插件安装即可。
+<p>这是几个插件库：其中1是Tachiyomi官方库；在mihon中可以直接使用的是2、4；第3个已经不行了</p>
+<blockquote>
+<p>1、 https://raw.githubusercontent.com/Tachiyomiorg/extensions/repo/index.min.json</p>
+<p>2、 https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json</p>
+<p>3、 https://beerpiss.github.io/Tachiyomi-unofficial-extensions/index.min.json</p>
+<p>4、 https://stevenyomi.github.io/copymanga/index.min.json</p>
+</blockquote>
+<p>可是当我输入官方库时，mihon总是提示我“仓库网址错误”，放狗找了下，也没找到合适的办法。当时脑子短路，忘掉可以单独下载插件安装就行。</p>
+<p>于是从<a href="https://tachiyomi.org/extensions/" target="_blank" rel="noopener">Tachiyomi官网</a>找来插件，单独下载进行安装就搞定了。</p>
+<p>补记：后来在Tachiyomi中输入仓库，一次性搞定，非常顺利。看来还是Mihon特意屏蔽了Tachiyomi的官方仓库地址导致的问题。</p>
+<h2>使用插件</h2>
+安装完插件记得点“信任”，然后就可以使用了。具体suwayomi的使用和一般图源是一样的，只要注意一点，就是在图源右上角的筛选中记得打开“多语言”，不然看不到suwayomi插件。
+<p>具体配置不多说了，就是点开插件的“设置”，输入地址以及访问账户密码即可。</p>
+<p>另外，可能是兼容性问题，在Mihon中安装完suwayomi会提示“已废弃”，这个不用管，正常用即可。<br>
+使用下来，确实兼容性一般，很容易崩溃。如果打开就崩溃，可以尝试在“插件”中找到suwayomi，然后进入插件详情页，找到“清除cookie”选项试一下。</p>
+<h2>几个相关站点</h2>
+<p><a href="https://kirikira.moe/" target="_blank" rel="noopener">kirikira.moe</a>：一位接近00后的blog，里边有一些开源项目的介绍，以及自己在东京旅游的游记。事前准备还是可以借鉴的。我在20多岁时，可没有人家能这么好的记录和总结自己的生活经验。值得我zhei老登学习。🙆‍♂</p>
+<p><a href="https://bangumi.tv/m/topic/group/396924" target="_blank" rel="noopener">Tachiyomi/mihon 图源求推荐</a>、<a href="https://bangumi.tv/group/topic/400016" target="_blank" rel="noopener">安卓tachij2k(tachiyomi)&amp;mihon插件简单(踩坑)测试列表</a>：这其实是两个番组计划中的讨论帖。另外，番组计划我真觉得可以成为墙内豆瓣的替代品，不过这里文青还是少，主要是二次元向为主了。当然，也幸亏它影响力弱，但凡墙内有影响力的，迟早都是被干趴的命。（这里对傻逼xxx就不开骂，怕搂不住火儿🙊</p>
+<p><a href="https://justcomics.moe/t/topic/178" target="_blank" rel="noopener">Mihon 安装及使用教程</a>：教程本身没什么，主要是这个论坛听不错的。说起ACG类BBS，还是会怀念刚上网时候的NT，那里可以算是重塑我价值观的地方。然后JustComics，这个应该属于新生代漫画fans的论坛了，准备看看新一代漫画粉都在聊什么，怎么聊。老登好奇~👴<br>
+补记：后边又刷了下这个论坛，好像没啥ugc的内容，更像是一个联合blog，还是被表象迷惑了~</p>
+<p>顺便再抓两个Suwayomi和Tachidesk项目的介绍文章。<br>
+<a href="https://blog.csdn.net/weixin_38125348/article/details/141703244" title="按住ctrl在新页面打开">Tachidesk：超强的漫画聚合阅读器</a><br>
+<a href="https://ptt-diary.tw/mobilecomm/944759" title="md不支持新页面打开语法；GitHub不支持md补充的target标签，也是服气">免費看漫畫APP，Tachiyomi跨平台方案</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[认真学英语]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ren-zhen-xue-ying-yu/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ren-zhen-xue-ying-yu/">
+        </link>
+        <updated>2023-11-27T02:41:15.000Z</updated>
+        <summary type="html"><![CDATA[<p>英语真的是学了又放、放了又学，重复的我都累了。要说普通阅读或基础交流甚至基础书写，我觉得即便是目前状态，应该也是可以应对的。<br>
+但是仅这种状态，肯定是达不到我的预期的。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>英语真的是学了又放、放了又学，重复的我都累了。要说普通阅读或基础交流甚至基础书写，我觉得即便是目前状态，应该也是可以应对的。<br>
+但是仅这种状态，肯定是达不到我的预期的。</p>
+<!-- more -->
+<p>我自认为对于汉语的掌握还算可以，我希望英语——虽然不说变成母语程度，但至少能让我的表达不受太大局限。所以，英语必须要提高，没有上限。</p>
+<p>这里做两个用途：<br>
+1、收集一些不错的学习分享以及资料；<br>
+2、整理自己的想法，做好阶段性的学习计划。</p>
+<p>先收集一个：<br>
+<a href="https://byoungd.github.io/English-level-up-tips/#/" target="_blank" rel="noopener">离谱的英语学习指南</a></p>
+<p>最近又看到一个关于精读训练的<a href="https://twitter.com/taiyou_zai/status/1608720175129591808" target="_blank" rel="noopener">推文</a>，比较符合个人认知。用GPT4总结了下：<br>
+<quote></p>
+<ol>
+<li>基本方法：通过模仿YouTube视频中的英语母语者，直到能完美复述。</li>
+<li>纠正发音方法：发现通过模仿母语者讲话最有效，而不是仅学习发音课或IPA音标。</li>
+<li>遇到发音难点的处理：在难以发音的单词或音标上额外练习，逐步提高视频播放速度来匹配。</li>
+<li>发音标准的重要性：认为发音标准是学习语言的首要任务，影响词汇记忆和听力。</li>
+<li>学习语言的方法：重视“重复”的学习方法，通过反复练习某个音频或段落。</li>
+<li>肌肉记忆的作用：强调通过重复到达不需思考就能复述的程度，类似肌肉记忆。<br>
+</quote></li>
+</ol>
+<p>选择一段适合的视频比较重要，不能太无趣、太空洞，需要积攒一些这类素材。</p>
+<p>关于“旋元佑的语法书”比较，知乎上的帖子比较详细，不过只介绍到13年的版本，实际上19年还有一个新版，从豆瓣上看19年的版本会更好一些。<br>
+这里先有个结论：买新的！<br>
+<a href="https://www.zhihu.com/question/22756041" target="_blank" rel="noopener">网上盛传的《旋元佑英文文法书旧稿》与《文法俱乐部》和《语法俱乐部》有什么关系？</a><br>
+然后网上还有个非商用的电子版，放到这里备查。<a href="https://grammar.codeyu.com/" target="_blank" rel="noopener">旋元佑进阶文法</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[爱笑聚又关了]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ting-shuo-axj-dao-liao/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ting-shuo-axj-dao-liao/">
+        </link>
+        <updated>2023-11-13T01:04:36.000Z</updated>
+        <summary type="html"><![CDATA[<p>爱笑聚这次关的时间估计会比较久，之前在blog中备了一些资源站，结果域名直接被端，看来还是github这个靠谱儿些，以后还是来这里更新吧... ...</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>爱笑聚这次关的时间估计会比较久，之前在blog中备了一些资源站，结果域名直接被端，看来还是github这个靠谱儿些，以后还是来这里更新吧... ...</p>
+<!-- more -->
+<p>来自废弃blog的2023-5-30消息：</p>
+<p>听说RARBG倒了。大致原因是俄罗斯跟乌克兰打仗，导致机房费用激增无法负担；另外，之前都还是一起工作的同事，结果要在战场上兵戎相见。</p>
+<p>第二条真是最悲哀的事了~可惜普京内老王八还要打仗！独裁者关心的从来都不是百姓生活，而是一己私欲。希望乌克兰大反攻，直接把普京政权干细碎！还俄罗斯民众一个自由民主的开放社会！</p>
+<p>说多了，这里只是要说RARBG还没完全倒掉。这个<a href="https://rarbg.so/" target="_blank" rel="noopener">RARBG聚合页</a>中还有一些域名在提供服务。权当留存一些希望了的种子了~</p>
+<p>新消息：有人用现代技术完全<a href="https://therarbg.com/" target="_blank" rel="noopener">重制了rarbg前端</a></p>
+<p>----------------------历史分割线--------------------------</p>
+<p>前两天又恢复了。这里当成站点收集得了~</p>
+<p> </p>
+<p>还有以下替代：</p>
+<p><a href="https://www.gying.net/" target="_blank" rel="noopener">无名小站</a></p>
+<p><a href="https://www.yinfans.me/" target="_blank" rel="noopener">音范丝</a></p>
+<p><a href="https://www.dytt89.com" target="_blank" rel="noopener">电影天堂</a></p>
+<p><a href="https://gaoqing.fm/" target="_blank" rel="noopener">高清电台</a></p>
+<p><a href="https://www.mini4k.com/" target="_blank" rel="noopener">迷客电影</a></p>
+<p><a href="http://pianyuan.org/" target="_blank" rel="noopener">片源网</a></p>
+<p><a href="https://www.cilixiong.com/" target="_blank" rel="noopener">磁力熊</a>：在线影视站，支持磁力下载，电影都是精选过的，类似“低端影视”</p>
+<p>pt站(以下仅介绍)</p>
+<p><a href="http://www.ptyqm.com/28676.html" target="_blank" rel="noopener">馒头</a></p>
+<p><a href="https://www.ptziyuan.com/746.html" target="_blank" rel="noopener">ttg</a></p>
+<p>持续更新</p>
+<p> </p>
+<p>还有<a href="https://mp.weixin.qq.com/s/sKRufFeWvifaC8JR1JjZeA" target="_blank" rel="noopener">米奇老师</a>的</p>
+<p>还有一个<a href="https://jubt.fun/cn/index.html" target="_blank" rel="noopener">bt聚合</a>，乱七八糟啥都有</p>
+]]></content>
+    </entry>
+</feed>
