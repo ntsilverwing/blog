@@ -1,0 +1,225 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>折腾CosyVoice3 | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1771751244529">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1771751244529" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://funaudiollm.github.io/cosyvoice2/pics/CosyVoice2-overview.png')">
+            </div>
+          
+          <h2 class="post-title">折腾CosyVoice3</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2025-12-25</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                    AI
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>想在本地部署一个CosyVoice玩儿一下。其实挺简单的，只不过由于硬件环境+不熟悉Linux系统，导致折腾里好几遍。现在想想，还是自己太蠢了……总之，先记录下吧。</p>
+<!-- more -->
+<p>先罗列下资源：<br>
+GitHub项目：<br>
+https://github.com/FunAudioLLM/CosyVoice</p>
+<p>参考视频：<br>
+【【AI音色克隆】超强AI音色克隆，CosyVoice，最新模型，速度超级快！附上本地安装教程！】 https://www.bilibili.com/video/BV1Dwx4e2ESu/?share_source=copy_web&amp;vd_source=4ea10cc08ac122b783b99dc60d34ca79</p>
+<p>【CosyVoice3 本地部署！声音克隆 TTS！支持9种语言，18种中文方言！消费级显卡可运行！】 https://www.bilibili.com/video/BV1cDqqBeEtN/?share_source=copy_web&amp;vd_source=4ea10cc08ac122b783b99dc60d34ca79</p>
+<p>第一遍折腾：<br>
+第一遍巨蠢，太依赖AI了。什么东西都没看，连GitHub项目地址都没细看，直接扔给AI（perplexity pro的GPT5.2），让它帮我解读并给出部署步骤。</p>
+<p>整体给的框架其实是对的，根据我的软硬件条件，给出了在WIN10下通过WSL和Docker部署的几个方式。然后我选了最蠢的docker部署……因为它说最简单…</p>
+<p>过程非常痛苦。因为我之前docker有部署一个本地的知识库，而且还把docker安装到了C盘。所以第一遍不只是部署项目，还加上了迁移docker，以及解决另一个超他妈奇怪的问题（局域网下，两台机器访问时会出现间歇性断开情况，这个问题也是巨逼奇怪！好在最后也算是不完美解决了，回头但开一个帖子记录下）。</p>
+<p>第一遍不细说了，算是让我对docker使用有了进一步了解吧~</p>
+<p>第二遍折腾：<br>
+改用WSL安装Ubuntu，然后部署项目。政体过程其实和docker差不多，也都要安装conda然后在独立环境下进行部署。<br>
+这一遍是按照资料中本地部署的视频来的。其实应该一遍搞定的，结果遇到了一个蠢死自己的小问题……Linux环境下对于大小写敏感，部署资料中给的原码CosyVoice这个子目录有两个大写字母，而代码中都用的是小写。AI也是蠢的可以，完全没给我说这种情况，然后指着它一同瞎几把改。改的我都想删环境了……虽然webui算是跑起来了，但模型上有问题，一直报错无法生成语音。</p>
+<p>第三遍折腾：<br>
+换了参考视频中第一条视频，改用在win10环境下，直接安装conda来部署。其实整体逻辑是一样的，都是通过conda来分离独立环境进行项目部署。只不过，这次傻逼在硬件环境上了……</p>
+<p>由于用的是RTX50系显卡，虽然cuda13和cuDNN的安装都没问题，但pytorch最新版本在WIN环境下对于50系显卡支持有问题，导致最终webui运行了，但模型仍然无法使用。</p>
+<p>第四遍折腾：<br>
+还是换回到WSL的Ubuntu环境了…<br>
+先来到之前clone好的项目文件下，git pull了最新的代码。因为之前的依赖都弄好了，所以这次只是改了下第二遍中那个愚蠢的大小写问题。<br>
+然后运行，遇到了新问题：关于音频编码。<br>
+这次AI倒是挺给力的（不得不说，遇到代码问题的情况下，还是Claude系比OpenAI的好使），直接给出具体的代码，最终使用soundfile库来生成文件。<br>
+哦对了，还有一个细节问题。原文件下几个主要的执行py文件，里边关于模型的code需要按照本地模型路径下的文件进行修改。<br>
+还有模型下载上，第二遍折腾时，WSL环境下的模型下载有点儿问题。AI分析日志后给出这个结论后，我用第三遍折腾时在WIN环境下载的模型做了替换后就正常了。其实环境本身不重要，应该还是我第二遍部署时出现的问题。</p>
+<p>最后：<br>
+玩儿了一阵子，这个项目还挺有趣，本地生成的速度也还可以。大约比官网生成的速度慢了一倍吧，但本地毕竟方便，消费级显卡跑这个项目绝对没问题。而且在GPU使用上，我觉得还是可以优化的。</p>
+<p>现在还有以下一些事项待解决&amp;实验：<br>
+1、用CosyVoice2 0.5B模型跑一下预训练语音，尝试用instruction的方式来生成一下。<br>
+2、清理win环境下miniconda部署残留。后续还是决定用wsl来搞了，得把miniconda清理一下。而且我还在win下单独安装cuda和cuDNN，留着吧也行，但感觉用处不大，纯占空间。<br>
+3、清理docker环境下的部署残留。我还把本地知识库给搞废了，还得重新部署一下。<br>
+4、解决下局域网其它客户机对于当前项目的访问问题。我的常用客户端是可以访问的，但还有一个端访问起来有些异常，应该不是很难解决的事儿吧，我猜…</p>
+<p>虽然够折腾，但收获也还是有的，最终结果也还不错，算是一次得到正反馈的实验吧。加油！</p>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/jing-yue-b550i-zhu-ban-sheng-ji-zotac-rtx5060-ji-lu/">
+              <h3 class="post-title">
+                下一篇：精粤B550i主板升级Zotac RTX5060记录
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>

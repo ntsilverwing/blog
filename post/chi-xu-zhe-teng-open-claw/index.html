@@ -1,0 +1,487 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>持续折腾open claw | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1771751244529">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1771751244529" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text-dark.png')">
+            </div>
+          
+          <h2 class="post-title">持续折腾open claw</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2026-02-19</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/arIl0x5ep8/">
+                    openclaw
+                    
+                      ，
+                    
+                  </a>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                    AI
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>Openclaw是真好玩儿！已经玩儿了大半个月了，欲罢不能，感觉还有很多可能没有发挥出来。肯定还要继续折腾的，不过这玩儿现在也真的是鲁棒性太差，很容易就玩儿挂了。于是决定开个帖子持续更新一下。</p>
+<!-- more -->
+<h1 id="首先介绍下环境">首先介绍下环境</h1>
+<p>我的是Oracle的免费vps，arm3核+18G内存+100G硬盘，跑这玩儿绰绰有余了。</p>
+<h1 id="目前遇到的主要问题并解决了的">目前遇到的主要问题并解决了的：</h1>
+<h2 id="问题-1网关进程假死导致端口冲突-http-502-port-18789-in-use">🔴 问题 1：网关进程假死导致端口冲突 (HTTP 502 / Port 18789 in use)</h2>
+<p><strong>现象：</strong><br>
+执行 <code>openclaw gateway restart</code> 失败，提示端口 18789 已被占用。手动 <code>kill</code> 进程后，系统底层的 systemd 会瞬间自动将其重启，导致陷入无限死循环，外部 Tailscale 请求无法被转交，报错 HTTP 502。<br>
+<strong>解决方案：</strong><br>
+必须先切断系统的自动复活机制，清理残留端口，再重新安装服务 。 <a href="https://github.com/openclaw/openclaw/issues/1380">github</a></p>
+<pre><code class="language-bash"># 1. 停止系统托管服务，避免其自动重启进程
+systemctl --user stop openclaw-gateway.service
+
+# 2. 强制终止残留的死锁进程，清理锁文件
+openclaw gateway --force
+rm -f ~/.openclaw/gateway.lock
+
+# 3. 重新安装并拉起系统服务
+openclaw gateway install --force
+systemctl --user enable --now openclaw-gateway.service
+</code></pre>
+<h2 id="问题-2修改配置以消除-tailscale-与本地安全警告">🔴 问题 2：修改配置以消除 Tailscale 与本地安全警告</h2>
+<p><strong>现象：</strong><br>
+状态表 (<code>openclaw status</code>) 中出现 <code>Reverse proxy headers are not trusted</code> 等警告，并且无法正常信任 Tailscale 传来的请求 。 <a href="https://fossies.org/linux/openclaw/docs/gateway/tailscale.md">fossies</a><br>
+<strong>解决方案：</strong><br>
+将 OpenClaw 的网关绑定到本地，开启 Serve 模式，并信任本地环回代理 。 <a href="https://openclaw.dog/docs/gateway/tailscale/">openclaw</a></p>
+<pre><code class="language-bash">openclaw config set gateway.bind loopback
+openclaw config set gateway.tailscale.mode serve
+openclaw config set gateway.trustedProxies '[&quot;127.0.0.1&quot;, &quot;::1&quot;]'
+openclaw config set gateway.controlUi.allowInsecureAuth false
+openclaw gateway restart
+</code></pre>
+<h2 id="问题-3命令行设备-token-丢失-missing-scope-1008-pairing-required">🔴 问题 3：命令行设备 Token 丢失 (Missing scope / 1008 pairing required)</h2>
+<p><strong>现象：</strong><br>
+由于网关崩溃并经历了强制重装，之前的认证凭据损坏失效，CLI 和网页均提示 <code>unreachable (missing scope: operator.admin)</code> 或 <code>1008 pairing required</code> 。 <a href="https://github.com/openclaw/openclaw/issues/4833">github</a><br>
+<strong>解决方案：</strong><br>
+通过清理旧的身份文件强制系统重新生成最高权限，或通过免验证模式进入后台生成长效 Token 。 <a href="https://github.com/openclaw/openclaw/issues/4833">github</a></p>
+<pre><code class="language-bash"># 方案 A：清理旧认证文件，让系统自动生成新的
+rm -f ~/.openclaw/identity/device.json
+rm -f ~/.openclaw/devices/paired.json
+systemctl --user restart openclaw-gateway.service
+
+# 方案 B：生成带最高权限的临时单次登录链接
+openclaw dashboard --no-open
+# 复制输出的 /#token=... 链接进行登录
+</code></pre>
+<h2 id="问题-4tailscale-serve-转发失效-502-bad-gateway">🔴 问题 4：Tailscale Serve 转发失效 (502 Bad Gateway)</h2>
+<p><strong>现象：</strong><br>
+OpenClaw 已经在 18789 端口健康运行，但通过 Tailscale 域名访问依旧报 502 错误。<br>
+<strong>解决方案：</strong><br>
+使用 Tailscale 最新的 CLI 语法，强行重置并映射后台 HTTPS 端口。</p>
+<pre><code class="language-bash">sudo tailscale serve reset
+sudo tailscale serve --bg http://127.0.0.1:18789
+</code></pre>
+<h2 id="问题-5终极救命稻草ssh-隧道直连访问">🔴 问题 5：终极救命稻草：SSH 隧道直连访问</h2>
+<p><strong>现象：</strong><br>
+当外网、域名、反向代理全部崩溃时，需要一种 100% 能够进入控制台的备用方案。<br>
+<strong>解决方案：</strong><br>
+利用 SSH 建立本地端口转发隧道。在 Windows 下，需要先右键私钥文件 <code>属性 -&gt; 安全 -&gt; 高级</code>，删除所有继承权限，仅授予当前用户“完全控制”权限，以防 SSH 报 <code>WARNING: UNPROTECTED PRIVATE KEY FILE!</code> 的安全错误。</p>
+<pre><code class="language-bash">ssh -i &quot;你的私钥路径&quot; -N -L 18789:127.0.0.1:18789 ubuntu@你的VPS公网IP
+</code></pre>
+<p>建立隧道后，直接在本地浏览器访问 <code>http://localhost:18789/</code>，这会被 OpenClaw 视为最高级别的本地安全访问，完全无需配对。</p>
+<h2 id="问题-6外网设备-手机-的配对审批与浏览器兼容性">🔴 问题 6：外网设备 (手机) 的配对审批与浏览器兼容性</h2>
+<p><strong>现象：</strong><br>
+手机端 Tailscale 连通，但 Via 浏览器无法打开网页（因为自带的加密 DNS 和本地屏蔽规则破坏了 <code>.ts.net</code> 的内网解析）。换 Chrome 后成功打开页面，但提示 <code>1008: pairing required</code>。<br>
+<strong>解决方案：</strong></p>
+<ol>
+<li>避开使用强制公网 DNS 解析的轻量浏览器 (如 Via)，改用 Chrome。</li>
+<li>手机属于“外部新设备”，需在电脑的 SSH 终端中进行手动授权审批，审批后便能永久通行：</li>
+</ol>
+<pre><code class="language-bash"># 查看有哪些设备在申请敲门
+openclaw devices list
+
+# 批准手机的连接申请（复制列表里的待审批 req_id）
+openclaw devices approve &lt;你的请求ID&gt;
+</code></pre>
+<h2 id="僵尸gateway进程简报">🧟 僵尸Gateway进程简报</h2>
+<h3 id="现象what">📌 现象（What）</h3>
+<p>系统中有 <strong>两个</strong> <code>openclaw-gateway</code> 进程在同时运行：</p>
+<table>
+<thead>
+<tr>
+<th>PID</th>
+<th>状态</th>
+<th>CPU</th>
+<th>内存</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2392085</td>
+<td>正常</td>
+<td>0.9%</td>
+<td>471MB</td>
+<td>系统服务（systemd管理）</td>
+</tr>
+<tr>
+<td><strong>2435254</strong></td>
+<td><strong>僵尸</strong></td>
+<td><strong>138%</strong></td>
+<td>336MB</td>
+<td><strong>孤儿进程，死循环中</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="时间线when">⏰ 时间线（When）</h3>
+<ul>
+<li><strong>02:16</strong> — 正常gateway启动（PID 2392085）</li>
+<li><strong>04:10</strong> — 僵尸gateway启动（PID 2435254），随后进入CPU死循环</li>
+<li><strong>当前</strong> — 已持续占用CPU超过24小时</li>
+</ul>
+<h3 id="根本原因why-how">🔍 根本原因（Why &amp; How）</h3>
+<p><strong>核心原因</strong>：NotebookLM CLI 启动了一个<strong>独立</strong>的gateway实例。</p>
+<p><strong>过程还原</strong>：</p>
+<ol>
+<li>你在终端执行了NotebookLM命令</li>
+<li>NotebookLM（或某个脚本）启动了 <code>openclaw-gateway</code> 并指定：
+<ul>
+<li>端口：<code>打码</code>（而非默认的8080）</li>
+<li>Token：<code>打码</code></li>
+</ul>
+</li>
+<li>这个实例<strong>不是</strong>通过systemd启动的，而是直接调用的</li>
+<li>它与已运行的systemd服务冲突，陷入某种IO/网络等待的死循环</li>
+</ol>
+<p><strong>证据</strong>：</p>
+<pre><code class="language-bash"># 僵尸进程的环境变量
+OPENCLAW_GATEWAY_PORT=打码
+OPENCLAW_GATEWAY_TOKEN=打码
+</code></pre>
+<h3 id="️-如何避免">⚠️ 如何避免</h3>
+<ol>
+<li>
+<p><strong>NotebookLM使用时指定已有gateway</strong>：</p>
+<pre><code class="language-bash">export OPENCLAW_GATEWAY_URL=&quot;http://localhost:8080&quot;
+export OPENCLAW_GATEWAY_TOKEN=&quot;你主服务的token&quot;
+# 这样就不会自动启动新gateway
+</code></pre>
+</li>
+<li>
+<p><strong>如果必须启动独立实例</strong>：</p>
+<pre><code class="language-bash"># 先停止systemd服务
+sudo systemctl stop openclaw-gateway
+# 再手动启动
+openclaw-gateway --port 18789 &amp;
+</code></pre>
+</li>
+<li>
+<p><strong>使用完毕后清理</strong>：</p>
+<pre><code class="language-bash"># 杀死游离的gateway进程
+killall openclaw-gateway
+# 然后恢复systemd服务
+sudo systemctl start openclaw-gateway
+</code></pre>
+</li>
+<li>
+<p><strong>定期监控</strong>：</p>
+<pre><code class="language-bash">ps aux | grep openclaw-gateway | grep -v grep
+# 如果看到多个gateway进程，那就是问题
+</code></pre>
+</li>
+</ol>
+<p><strong>关于上述的僵尸进程问题，一开始并没有彻底解决，然后又花了好久才处理掉。我觉得应该是我最开始安装埋下的锅。我是root权限安装，然后又迁移到user权限下，这个隐患一直没有解除掉。</strong></p>
+<p>整体来说，这次排错确实费了不少周折，但也彻底摸清了 OpenClaw 在 Linux/Ubuntu 下最容易踩坑的系统级机制。以下总结是这次核心故障点和最直接的终极解决方案，防止以后重蹈覆辙：</p>
+<h3 id="核心问题一多版本网关服务冲突端口霸占">核心问题一：多版本网关服务冲突（端口霸占）</h3>
+<p>系统内同时存在两个网关守护进程在“神仙打架”。一个是旧版安装残留的系统级服务（名为 <code>openclaw.service</code>），另一个是我们新装的用户级服务（名为 <code>openclaw-gateway.service</code>）。由于旧版服务随系统率先启动并霸占了 <code>18789</code> 端口，导致新版服务虽然启动但无法对外提供连接，你在终端里看到的所有状态实际上都是那个旧版“僵尸进程”的伪装 。 <a href="https://github.com/openclaw/openclaw/issues/5103">github</a></p>
+<h3 id="核心问题二全局环境变量导致路径漂移">核心问题二：全局环境变量导致路径漂移</h3>
+<p>那个潜伏在系统底层的旧版服务，其配置文件 <code>/etc/systemd/system/openclaw.service</code> 中被硬编码写入了错误的全局变量 <code>Environment=&quot;OPENCLAW_HOME=/home/ubuntu/.openclaw&quot;</code>。由于系统默认会在该变量指定的路径后再次拼接 <code>.openclaw</code> 作为工作区，这就导致了无论怎么删，系统都会源源不断地重新生成那个诡异的嵌套垃圾目录 <code>/home/ubuntu/.openclaw/.openclaw/</code> 。 <a href="https://docs.openclaw.ai/gateway">docs.openclaw</a></p>
+<h3 id="核心问题三环境重置后的连接断代">核心问题三：环境重置后的连接断代</h3>
+<p>在暴力清除了所有错乱的配置和进程后，网关和节点都恢复到了相当于“恢复出厂设置”的纯净状态。由于旧的设备身份令牌（Token）已不复存在，节点必须作为新设备重新向网关发起握手并申请授权，这就导致了连接初期的 <code>pairing required</code> 报错 。 <a href="https://docs.openclaw.ai/gateway/troubleshooting">docs.openclaw</a></p>
+<h3 id="终极解决步骤汇总">终极解决步骤汇总</h3>
+<p>如果未来再次遇到不明原因的 <code>unreachable</code> 或目录嵌套乱象，请直接按以下“四步走”执行物理级清理和重建：</p>
+<ol>
+<li><strong>斩杀系统级旧服务</strong>：<pre><code class="language-bash">sudo systemctl stop openclaw.service
+sudo systemctl disable openclaw.service
+sudo rm -f /etc/systemd/system/openclaw.service
+sudo systemctl daemon-reload
+</code></pre>
+</li>
+<li><strong>清理用户级服务与僵尸进程</strong>：<pre><code class="language-bash">systemctl --user stop openclaw-gateway.service
+systemctl --user stop openclaw-node.service
+sudo pkill -9 -f openclaw
+rm -rf /home/ubuntu/.openclaw/.openclaw/
+</code></pre>
+</li>
+<li><strong>重新安装纯净版服务</strong>：<pre><code class="language-bash">openclaw gateway install --force
+systemctl --user enable --now openclaw-gateway.service
+sleep 3
+openclaw node install --force
+systemctl --user enable --now openclaw-node.service
+</code></pre>
+</li>
+<li><strong>重新批准设备配对</strong>：<br>
+运行 <code>openclaw devices list</code> 获取处于 pending 状态的请求 ID，然后执行 <code>openclaw devices approve &lt;Request ID&gt;</code> 签发新令牌。</li>
+</ol>
+<p><strong>顺便把迁移过程也总结下吧。还是对Linux系统不熟悉，如果是Windows的就没这么费劲了…</strong></p>
+<p>以下这是一份 OpenClaw 从 <code>root</code> 迁移至普通用户 (<code>ubuntu</code>) 的排错复盘记录。整个过程虽然踩了一些坑，但也暴露出 Node.js/AI 代理类应用在跨用户迁移时最容易遇到的核心痛点。</p>
+<hr>
+<h1 id="openclaw-跨用户迁移排错记录-root-ubuntu">OpenClaw 跨用户迁移排错记录 (Root -&gt; Ubuntu)</h1>
+<h2 id="核心痛点与主要问题">📌 核心痛点与主要问题</h2>
+<p>在将 OpenClaw 数据目录从 <code>/root/.openclaw/</code> 物理移动到 <code>/home/ubuntu/.openclaw/</code> 后，我们主要遭遇了以下三个层面的“连环报错”：</p>
+<ol>
+<li><strong>“Missing config” 无限重启循环</strong>
+<ul>
+<li><strong>现象：</strong> 日志狂刷 <code>Missing config. Run openclaw setup or set gateway.mode=local</code>。</li>
+<li><strong>原因：</strong> 并非文件不存在，而是 Systemd 以新用户启动时，未能准确找到配置文件路径，或者配置文件内部缺失了最核心的 <code>gateway</code> 启动块。</li>
+</ul>
+</li>
+<li><strong>端口冲突 (Port 18789 is already in use)</strong>
+<ul>
+<li><strong>现象：</strong> Systemd 报错退出，日志显示 <code>Gateway failed to start: gateway already running (pid xxx)</code>。</li>
+<li><strong>原因：</strong> Systemd 在不断尝试重启 (<code>Restart=always</code>) 的过程中，由于权限或配置报错，导致旧的 Node.js 进程没有被干净地杀掉（变成了僵尸进程），一直霸占着 18789 端口，导致后续的新进程全军覆没。</li>
+</ul>
+</li>
+<li><strong>“幽灵路径”导致的权限拒绝 (EACCES: permission denied)</strong>
+<ul>
+<li><strong>现象：</strong> 即使所有环境变量都改了，在界面发消息或创建 Agent 时，依然报错试图创建目录 <code>/root/.openclaw/agents/main/sessions</code>。</li>
+<li><strong>原因：</strong> 即使指定了 <code>$HOME</code>，OpenClaw 系统中仍有优先级更高的配置文件（如 <code>gateway.config.js</code>）或本地 JSON 配置（<code>openclaw.json</code> 中的 <code>workspace</code>）硬编码了旧的 <code>/root</code> 绝对路径。程序顺着旧路径去写文件，被 Linux 权限系统拦截。</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="最终最有效的解决方案-checklist">✅ 最终最有效的解决方案 (Checklist)</h2>
+<p>如果未来需要再次迁移或部署，按照以下四步即可一次性解决问题，避免踩坑：</p>
+<h3 id="第一步彻底接管文件所有权">第一步：彻底接管文件所有权</h3>
+<p>仅仅使用 <code>mv</code> 或 <code>cp</code> 移动文件是不够的，必须确保新用户拥有所有子目录（特别是 <code>agents</code>, <code>workspace</code>, <code>sessions</code> 等）的绝对控制权：</p>
+<pre><code class="language-bash">sudo chown -R ubuntu:ubuntu /home/ubuntu/.openclaw
+</code></pre>
+<h3 id="第二步排查所有的硬编码路径">第二步：排查所有的“硬编码”路径</h3>
+<p>不要只看环境变量，必须清理配置文件中残留的旧路径：</p>
+<ol>
+<li><strong>修改 JSON 文件</strong> (<code>/home/ubuntu/.openclaw/openclaw.json</code>)：<br>
+确保 <code>agents.defaults.workspace</code> 等路径已经明确修改为 <code>/home/ubuntu/.openclaw/workspace</code>（切记不要乱加官方不支持的字段，如 <code>storage</code>）。</li>
+<li><strong>排查 JS 配置文件（隐形杀手）</strong>：<br>
+检查 <code>/home/ubuntu/.openclaw/gateway.config.js</code>，这个文件的优先级极高。如果里面硬编码了 <code>/root</code>，必须将其替换为 <code>/home/ubuntu</code>。</li>
+</ol>
+<h3 id="第三步斩断端口占用的死循环">第三步：斩断端口占用的死循环</h3>
+<p>如果陷入了 Systemd 不断报错重启的死循环，不要直接改配置重启，必须先“净空”环境：</p>
+<pre><code class="language-bash"># 1. 停掉系统服务
+sudo systemctl stop openclaw
+
+# 2. 查出谁在占用 18789 端口并强制击杀 (替换 &lt;PID&gt;)
+sudo lsof -i :18789
+sudo kill -9 &lt;PID&gt;
+</code></pre>
+<h3 id="第四步构建信息茧房式的-systemd-守护脚本">第四步：构建“信息茧房”式的 Systemd 守护脚本</h3>
+<p>这是解决“服务找不到配置”的最有效手段。不要指望程序自己去猜路径，必须在 <code>openclaw.service</code> 中把所有路径环境变量<strong>显式锁死</strong>。</p>
+<p>最稳妥的 <code>/etc/systemd/system/openclaw.service</code> 配置如下：</p>
+<pre><code class="language-ini">[Unit]
+Description=OpenClaw Gateway Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu
+# 强制覆盖环境变量，彻底切断与 root 的联系
+Environment=&quot;HOME=/home/ubuntu&quot;
+Environment=&quot;OPENCLAW_HOME=/home/ubuntu/.openclaw&quot;
+Environment=&quot;OPENCLAW_CONFIG_PATH=/home/ubuntu/.openclaw/openclaw.json&quot;
+# 启动命令
+ExecStart=/usr/bin/openclaw gateway --verbose
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p><em>(修改后需执行 <code>sudo systemctl daemon-reload</code> 和 <code>sudo systemctl start openclaw</code>)</em></p>
+<h3 id="避坑经验总结">💡 避坑经验总结</h3>
+<ol>
+<li><strong>不要盲目删数据</strong>：遇到报错时，不要轻易删除已经生成的 <code>agents</code> 或 <code>sessions</code> 目录。问题通常出在“指路牌（路径配置）”指错了，而不是“房子（数据文件）”坏了。</li>
+<li><strong>正确使用 CLI 命令</strong>：读取配置不需要带 <code>gateway</code>，正确语法是 <code>openclaw config get agents</code>。</li>
+<li><strong>区分静态配置和运行时环境</strong>：排错时，如果 Systemd 起不来，可以使用 <code>sudo -u ubuntu env -i HOME=/home/ubuntu ...</code> 来模拟干净环境排查，直接定位是服务脚本写错了还是程序本身的 Bug。</li>
+</ol>
+<h1 id="遇到的问题目前还没有着手解决的">遇到的问题目前还没有着手解决的：</h1>
+<ol>
+<li>如何修改主agent使用的模型：<br>
+之前一修改就挂掉，很诡异。</li>
+<li>如何配置备用模型：<br>
+按说主模型失效后会访问备用模型，官方都是有配置方式的，但就是不生效。</li>
+<li>如何设置多agent：<br>
+这个有思路，应该就是设置多个bot就可以。但不知道是否还有其它简便方式。</li>
+<li>如何在agent下设置多session：<br>
+这个也有思路，就是首先让bot可以接受群信息，然后拉bot到不同群，并获取到群id，通过不同地群id设置多个session，不同session执行不同地工作。不过这样session是否可以配置不同模型？我看后台是可以选择的，但按照目前openclaw的操行，是否能生效，未知，需要调试。</li>
+<li>如何设置一个主agent，然后让这个主agent根据任务特性来分配由哪个模型来完成任务。</li>
+</ol>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/zhe-teng-cosyvoice3/">
+              <h3 class="post-title">
+                下一篇：折腾CosyVoice3
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>

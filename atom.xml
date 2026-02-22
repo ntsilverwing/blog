@@ -1,0 +1,567 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://ntsilverwing.github.io/blog/</id>
+    <title>宇宙中的粒子</title>
+    <updated>2026-02-22T09:07:35.431Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://ntsilverwing.github.io/blog/"/>
+    <link rel="self" href="https://ntsilverwing.github.io/blog/atom.xml"/>
+    <subtitle>随想、碎念、燧知</subtitle>
+    <logo>https://ntsilverwing.github.io/blog/images/avatar.png</logo>
+    <icon>https://ntsilverwing.github.io/blog/favicon.ico</icon>
+    <rights>All rights reserved 2026, 宇宙中的粒子</rights>
+    <entry>
+        <title type="html"><![CDATA[持续折腾open claw]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/chi-xu-zhe-teng-open-claw/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/chi-xu-zhe-teng-open-claw/">
+        </link>
+        <updated>2026-02-20T06:46:36.000Z</updated>
+        <summary type="html"><![CDATA[<p>Openclaw是真好玩儿！已经玩儿了大半个月了，欲罢不能，感觉还有很多可能没有发挥出来。肯定还要继续折腾的，不过这玩儿现在也真的是鲁棒性太差，很容易就玩儿挂了。于是决定开个帖子持续更新一下。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>Openclaw是真好玩儿！已经玩儿了大半个月了，欲罢不能，感觉还有很多可能没有发挥出来。肯定还要继续折腾的，不过这玩儿现在也真的是鲁棒性太差，很容易就玩儿挂了。于是决定开个帖子持续更新一下。</p>
+<!-- more -->
+<h1 id="首先介绍下环境">首先介绍下环境</h1>
+<p>我的是Oracle的免费vps，arm3核+18G内存+100G硬盘，跑这玩儿绰绰有余了。</p>
+<h1 id="目前遇到的主要问题并解决了的">目前遇到的主要问题并解决了的：</h1>
+<h2 id="问题-1网关进程假死导致端口冲突-http-502-port-18789-in-use">🔴 问题 1：网关进程假死导致端口冲突 (HTTP 502 / Port 18789 in use)</h2>
+<p><strong>现象：</strong><br>
+执行 <code>openclaw gateway restart</code> 失败，提示端口 18789 已被占用。手动 <code>kill</code> 进程后，系统底层的 systemd 会瞬间自动将其重启，导致陷入无限死循环，外部 Tailscale 请求无法被转交，报错 HTTP 502。<br>
+<strong>解决方案：</strong><br>
+必须先切断系统的自动复活机制，清理残留端口，再重新安装服务 。 <a href="https://github.com/openclaw/openclaw/issues/1380">github</a></p>
+<pre><code class="language-bash"># 1. 停止系统托管服务，避免其自动重启进程
+systemctl --user stop openclaw-gateway.service
+
+# 2. 强制终止残留的死锁进程，清理锁文件
+openclaw gateway --force
+rm -f ~/.openclaw/gateway.lock
+
+# 3. 重新安装并拉起系统服务
+openclaw gateway install --force
+systemctl --user enable --now openclaw-gateway.service
+</code></pre>
+<h2 id="问题-2修改配置以消除-tailscale-与本地安全警告">🔴 问题 2：修改配置以消除 Tailscale 与本地安全警告</h2>
+<p><strong>现象：</strong><br>
+状态表 (<code>openclaw status</code>) 中出现 <code>Reverse proxy headers are not trusted</code> 等警告，并且无法正常信任 Tailscale 传来的请求 。 <a href="https://fossies.org/linux/openclaw/docs/gateway/tailscale.md">fossies</a><br>
+<strong>解决方案：</strong><br>
+将 OpenClaw 的网关绑定到本地，开启 Serve 模式，并信任本地环回代理 。 <a href="https://openclaw.dog/docs/gateway/tailscale/">openclaw</a></p>
+<pre><code class="language-bash">openclaw config set gateway.bind loopback
+openclaw config set gateway.tailscale.mode serve
+openclaw config set gateway.trustedProxies '[&quot;127.0.0.1&quot;, &quot;::1&quot;]'
+openclaw config set gateway.controlUi.allowInsecureAuth false
+openclaw gateway restart
+</code></pre>
+<h2 id="问题-3命令行设备-token-丢失-missing-scope-1008-pairing-required">🔴 问题 3：命令行设备 Token 丢失 (Missing scope / 1008 pairing required)</h2>
+<p><strong>现象：</strong><br>
+由于网关崩溃并经历了强制重装，之前的认证凭据损坏失效，CLI 和网页均提示 <code>unreachable (missing scope: operator.admin)</code> 或 <code>1008 pairing required</code> 。 <a href="https://github.com/openclaw/openclaw/issues/4833">github</a><br>
+<strong>解决方案：</strong><br>
+通过清理旧的身份文件强制系统重新生成最高权限，或通过免验证模式进入后台生成长效 Token 。 <a href="https://github.com/openclaw/openclaw/issues/4833">github</a></p>
+<pre><code class="language-bash"># 方案 A：清理旧认证文件，让系统自动生成新的
+rm -f ~/.openclaw/identity/device.json
+rm -f ~/.openclaw/devices/paired.json
+systemctl --user restart openclaw-gateway.service
+
+# 方案 B：生成带最高权限的临时单次登录链接
+openclaw dashboard --no-open
+# 复制输出的 /#token=... 链接进行登录
+</code></pre>
+<h2 id="问题-4tailscale-serve-转发失效-502-bad-gateway">🔴 问题 4：Tailscale Serve 转发失效 (502 Bad Gateway)</h2>
+<p><strong>现象：</strong><br>
+OpenClaw 已经在 18789 端口健康运行，但通过 Tailscale 域名访问依旧报 502 错误。<br>
+<strong>解决方案：</strong><br>
+使用 Tailscale 最新的 CLI 语法，强行重置并映射后台 HTTPS 端口。</p>
+<pre><code class="language-bash">sudo tailscale serve reset
+sudo tailscale serve --bg http://127.0.0.1:18789
+</code></pre>
+<h2 id="问题-5终极救命稻草ssh-隧道直连访问">🔴 问题 5：终极救命稻草：SSH 隧道直连访问</h2>
+<p><strong>现象：</strong><br>
+当外网、域名、反向代理全部崩溃时，需要一种 100% 能够进入控制台的备用方案。<br>
+<strong>解决方案：</strong><br>
+利用 SSH 建立本地端口转发隧道。在 Windows 下，需要先右键私钥文件 <code>属性 -&gt; 安全 -&gt; 高级</code>，删除所有继承权限，仅授予当前用户“完全控制”权限，以防 SSH 报 <code>WARNING: UNPROTECTED PRIVATE KEY FILE!</code> 的安全错误。</p>
+<pre><code class="language-bash">ssh -i &quot;你的私钥路径&quot; -N -L 18789:127.0.0.1:18789 ubuntu@你的VPS公网IP
+</code></pre>
+<p>建立隧道后，直接在本地浏览器访问 <code>http://localhost:18789/</code>，这会被 OpenClaw 视为最高级别的本地安全访问，完全无需配对。</p>
+<h2 id="问题-6外网设备-手机-的配对审批与浏览器兼容性">🔴 问题 6：外网设备 (手机) 的配对审批与浏览器兼容性</h2>
+<p><strong>现象：</strong><br>
+手机端 Tailscale 连通，但 Via 浏览器无法打开网页（因为自带的加密 DNS 和本地屏蔽规则破坏了 <code>.ts.net</code> 的内网解析）。换 Chrome 后成功打开页面，但提示 <code>1008: pairing required</code>。<br>
+<strong>解决方案：</strong></p>
+<ol>
+<li>避开使用强制公网 DNS 解析的轻量浏览器 (如 Via)，改用 Chrome。</li>
+<li>手机属于“外部新设备”，需在电脑的 SSH 终端中进行手动授权审批，审批后便能永久通行：</li>
+</ol>
+<pre><code class="language-bash"># 查看有哪些设备在申请敲门
+openclaw devices list
+
+# 批准手机的连接申请（复制列表里的待审批 req_id）
+openclaw devices approve &lt;你的请求ID&gt;
+</code></pre>
+<h2 id="僵尸gateway进程简报">🧟 僵尸Gateway进程简报</h2>
+<h3 id="现象what">📌 现象（What）</h3>
+<p>系统中有 <strong>两个</strong> <code>openclaw-gateway</code> 进程在同时运行：</p>
+<table>
+<thead>
+<tr>
+<th>PID</th>
+<th>状态</th>
+<th>CPU</th>
+<th>内存</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2392085</td>
+<td>正常</td>
+<td>0.9%</td>
+<td>471MB</td>
+<td>系统服务（systemd管理）</td>
+</tr>
+<tr>
+<td><strong>2435254</strong></td>
+<td><strong>僵尸</strong></td>
+<td><strong>138%</strong></td>
+<td>336MB</td>
+<td><strong>孤儿进程，死循环中</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="时间线when">⏰ 时间线（When）</h3>
+<ul>
+<li><strong>02:16</strong> — 正常gateway启动（PID 2392085）</li>
+<li><strong>04:10</strong> — 僵尸gateway启动（PID 2435254），随后进入CPU死循环</li>
+<li><strong>当前</strong> — 已持续占用CPU超过24小时</li>
+</ul>
+<h3 id="根本原因why-how">🔍 根本原因（Why &amp; How）</h3>
+<p><strong>核心原因</strong>：NotebookLM CLI 启动了一个<strong>独立</strong>的gateway实例。</p>
+<p><strong>过程还原</strong>：</p>
+<ol>
+<li>你在终端执行了NotebookLM命令</li>
+<li>NotebookLM（或某个脚本）启动了 <code>openclaw-gateway</code> 并指定：
+<ul>
+<li>端口：<code>打码</code>（而非默认的8080）</li>
+<li>Token：<code>打码</code></li>
+</ul>
+</li>
+<li>这个实例<strong>不是</strong>通过systemd启动的，而是直接调用的</li>
+<li>它与已运行的systemd服务冲突，陷入某种IO/网络等待的死循环</li>
+</ol>
+<p><strong>证据</strong>：</p>
+<pre><code class="language-bash"># 僵尸进程的环境变量
+OPENCLAW_GATEWAY_PORT=打码
+OPENCLAW_GATEWAY_TOKEN=打码
+</code></pre>
+<h3 id="️-如何避免">⚠️ 如何避免</h3>
+<ol>
+<li>
+<p><strong>NotebookLM使用时指定已有gateway</strong>：</p>
+<pre><code class="language-bash">export OPENCLAW_GATEWAY_URL=&quot;http://localhost:8080&quot;
+export OPENCLAW_GATEWAY_TOKEN=&quot;你主服务的token&quot;
+# 这样就不会自动启动新gateway
+</code></pre>
+</li>
+<li>
+<p><strong>如果必须启动独立实例</strong>：</p>
+<pre><code class="language-bash"># 先停止systemd服务
+sudo systemctl stop openclaw-gateway
+# 再手动启动
+openclaw-gateway --port 18789 &amp;
+</code></pre>
+</li>
+<li>
+<p><strong>使用完毕后清理</strong>：</p>
+<pre><code class="language-bash"># 杀死游离的gateway进程
+killall openclaw-gateway
+# 然后恢复systemd服务
+sudo systemctl start openclaw-gateway
+</code></pre>
+</li>
+<li>
+<p><strong>定期监控</strong>：</p>
+<pre><code class="language-bash">ps aux | grep openclaw-gateway | grep -v grep
+# 如果看到多个gateway进程，那就是问题
+</code></pre>
+</li>
+</ol>
+<p><strong>关于上述的僵尸进程问题，一开始并没有彻底解决，然后又花了好久才处理掉。我觉得应该是我最开始安装埋下的锅。我是root权限安装，然后又迁移到user权限下，这个隐患一直没有解除掉。</strong></p>
+<p>整体来说，这次排错确实费了不少周折，但也彻底摸清了 OpenClaw 在 Linux/Ubuntu 下最容易踩坑的系统级机制。以下总结是这次核心故障点和最直接的终极解决方案，防止以后重蹈覆辙：</p>
+<h3 id="核心问题一多版本网关服务冲突端口霸占">核心问题一：多版本网关服务冲突（端口霸占）</h3>
+<p>系统内同时存在两个网关守护进程在“神仙打架”。一个是旧版安装残留的系统级服务（名为 <code>openclaw.service</code>），另一个是我们新装的用户级服务（名为 <code>openclaw-gateway.service</code>）。由于旧版服务随系统率先启动并霸占了 <code>18789</code> 端口，导致新版服务虽然启动但无法对外提供连接，你在终端里看到的所有状态实际上都是那个旧版“僵尸进程”的伪装 。 <a href="https://github.com/openclaw/openclaw/issues/5103">github</a></p>
+<h3 id="核心问题二全局环境变量导致路径漂移">核心问题二：全局环境变量导致路径漂移</h3>
+<p>那个潜伏在系统底层的旧版服务，其配置文件 <code>/etc/systemd/system/openclaw.service</code> 中被硬编码写入了错误的全局变量 <code>Environment=&quot;OPENCLAW_HOME=/home/ubuntu/.openclaw&quot;</code>。由于系统默认会在该变量指定的路径后再次拼接 <code>.openclaw</code> 作为工作区，这就导致了无论怎么删，系统都会源源不断地重新生成那个诡异的嵌套垃圾目录 <code>/home/ubuntu/.openclaw/.openclaw/</code> 。 <a href="https://docs.openclaw.ai/gateway">docs.openclaw</a></p>
+<h3 id="核心问题三环境重置后的连接断代">核心问题三：环境重置后的连接断代</h3>
+<p>在暴力清除了所有错乱的配置和进程后，网关和节点都恢复到了相当于“恢复出厂设置”的纯净状态。由于旧的设备身份令牌（Token）已不复存在，节点必须作为新设备重新向网关发起握手并申请授权，这就导致了连接初期的 <code>pairing required</code> 报错 。 <a href="https://docs.openclaw.ai/gateway/troubleshooting">docs.openclaw</a></p>
+<h3 id="终极解决步骤汇总">终极解决步骤汇总</h3>
+<p>如果未来再次遇到不明原因的 <code>unreachable</code> 或目录嵌套乱象，请直接按以下“四步走”执行物理级清理和重建：</p>
+<ol>
+<li><strong>斩杀系统级旧服务</strong>：<pre><code class="language-bash">sudo systemctl stop openclaw.service
+sudo systemctl disable openclaw.service
+sudo rm -f /etc/systemd/system/openclaw.service
+sudo systemctl daemon-reload
+</code></pre>
+</li>
+<li><strong>清理用户级服务与僵尸进程</strong>：<pre><code class="language-bash">systemctl --user stop openclaw-gateway.service
+systemctl --user stop openclaw-node.service
+sudo pkill -9 -f openclaw
+rm -rf /home/ubuntu/.openclaw/.openclaw/
+</code></pre>
+</li>
+<li><strong>重新安装纯净版服务</strong>：<pre><code class="language-bash">openclaw gateway install --force
+systemctl --user enable --now openclaw-gateway.service
+sleep 3
+openclaw node install --force
+systemctl --user enable --now openclaw-node.service
+</code></pre>
+</li>
+<li><strong>重新批准设备配对</strong>：<br>
+运行 <code>openclaw devices list</code> 获取处于 pending 状态的请求 ID，然后执行 <code>openclaw devices approve &lt;Request ID&gt;</code> 签发新令牌。</li>
+</ol>
+<p><strong>顺便把迁移过程也总结下吧。还是对Linux系统不熟悉，如果是Windows的就没这么费劲了…</strong></p>
+<p>以下这是一份 OpenClaw 从 <code>root</code> 迁移至普通用户 (<code>ubuntu</code>) 的排错复盘记录。整个过程虽然踩了一些坑，但也暴露出 Node.js/AI 代理类应用在跨用户迁移时最容易遇到的核心痛点。</p>
+<hr>
+<h1 id="openclaw-跨用户迁移排错记录-root-ubuntu">OpenClaw 跨用户迁移排错记录 (Root -&gt; Ubuntu)</h1>
+<h2 id="核心痛点与主要问题">📌 核心痛点与主要问题</h2>
+<p>在将 OpenClaw 数据目录从 <code>/root/.openclaw/</code> 物理移动到 <code>/home/ubuntu/.openclaw/</code> 后，我们主要遭遇了以下三个层面的“连环报错”：</p>
+<ol>
+<li><strong>“Missing config” 无限重启循环</strong>
+<ul>
+<li><strong>现象：</strong> 日志狂刷 <code>Missing config. Run openclaw setup or set gateway.mode=local</code>。</li>
+<li><strong>原因：</strong> 并非文件不存在，而是 Systemd 以新用户启动时，未能准确找到配置文件路径，或者配置文件内部缺失了最核心的 <code>gateway</code> 启动块。</li>
+</ul>
+</li>
+<li><strong>端口冲突 (Port 18789 is already in use)</strong>
+<ul>
+<li><strong>现象：</strong> Systemd 报错退出，日志显示 <code>Gateway failed to start: gateway already running (pid xxx)</code>。</li>
+<li><strong>原因：</strong> Systemd 在不断尝试重启 (<code>Restart=always</code>) 的过程中，由于权限或配置报错，导致旧的 Node.js 进程没有被干净地杀掉（变成了僵尸进程），一直霸占着 18789 端口，导致后续的新进程全军覆没。</li>
+</ul>
+</li>
+<li><strong>“幽灵路径”导致的权限拒绝 (EACCES: permission denied)</strong>
+<ul>
+<li><strong>现象：</strong> 即使所有环境变量都改了，在界面发消息或创建 Agent 时，依然报错试图创建目录 <code>/root/.openclaw/agents/main/sessions</code>。</li>
+<li><strong>原因：</strong> 即使指定了 <code>$HOME</code>，OpenClaw 系统中仍有优先级更高的配置文件（如 <code>gateway.config.js</code>）或本地 JSON 配置（<code>openclaw.json</code> 中的 <code>workspace</code>）硬编码了旧的 <code>/root</code> 绝对路径。程序顺着旧路径去写文件，被 Linux 权限系统拦截。</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="最终最有效的解决方案-checklist">✅ 最终最有效的解决方案 (Checklist)</h2>
+<p>如果未来需要再次迁移或部署，按照以下四步即可一次性解决问题，避免踩坑：</p>
+<h3 id="第一步彻底接管文件所有权">第一步：彻底接管文件所有权</h3>
+<p>仅仅使用 <code>mv</code> 或 <code>cp</code> 移动文件是不够的，必须确保新用户拥有所有子目录（特别是 <code>agents</code>, <code>workspace</code>, <code>sessions</code> 等）的绝对控制权：</p>
+<pre><code class="language-bash">sudo chown -R ubuntu:ubuntu /home/ubuntu/.openclaw
+</code></pre>
+<h3 id="第二步排查所有的硬编码路径">第二步：排查所有的“硬编码”路径</h3>
+<p>不要只看环境变量，必须清理配置文件中残留的旧路径：</p>
+<ol>
+<li><strong>修改 JSON 文件</strong> (<code>/home/ubuntu/.openclaw/openclaw.json</code>)：<br>
+确保 <code>agents.defaults.workspace</code> 等路径已经明确修改为 <code>/home/ubuntu/.openclaw/workspace</code>（切记不要乱加官方不支持的字段，如 <code>storage</code>）。</li>
+<li><strong>排查 JS 配置文件（隐形杀手）</strong>：<br>
+检查 <code>/home/ubuntu/.openclaw/gateway.config.js</code>，这个文件的优先级极高。如果里面硬编码了 <code>/root</code>，必须将其替换为 <code>/home/ubuntu</code>。</li>
+</ol>
+<h3 id="第三步斩断端口占用的死循环">第三步：斩断端口占用的死循环</h3>
+<p>如果陷入了 Systemd 不断报错重启的死循环，不要直接改配置重启，必须先“净空”环境：</p>
+<pre><code class="language-bash"># 1. 停掉系统服务
+sudo systemctl stop openclaw
+
+# 2. 查出谁在占用 18789 端口并强制击杀 (替换 &lt;PID&gt;)
+sudo lsof -i :18789
+sudo kill -9 &lt;PID&gt;
+</code></pre>
+<h3 id="第四步构建信息茧房式的-systemd-守护脚本">第四步：构建“信息茧房”式的 Systemd 守护脚本</h3>
+<p>这是解决“服务找不到配置”的最有效手段。不要指望程序自己去猜路径，必须在 <code>openclaw.service</code> 中把所有路径环境变量<strong>显式锁死</strong>。</p>
+<p>最稳妥的 <code>/etc/systemd/system/openclaw.service</code> 配置如下：</p>
+<pre><code class="language-ini">[Unit]
+Description=OpenClaw Gateway Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu
+# 强制覆盖环境变量，彻底切断与 root 的联系
+Environment=&quot;HOME=/home/ubuntu&quot;
+Environment=&quot;OPENCLAW_HOME=/home/ubuntu/.openclaw&quot;
+Environment=&quot;OPENCLAW_CONFIG_PATH=/home/ubuntu/.openclaw/openclaw.json&quot;
+# 启动命令
+ExecStart=/usr/bin/openclaw gateway --verbose
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p><em>(修改后需执行 <code>sudo systemctl daemon-reload</code> 和 <code>sudo systemctl start openclaw</code>)</em></p>
+<h3 id="避坑经验总结">💡 避坑经验总结</h3>
+<ol>
+<li><strong>不要盲目删数据</strong>：遇到报错时，不要轻易删除已经生成的 <code>agents</code> 或 <code>sessions</code> 目录。问题通常出在“指路牌（路径配置）”指错了，而不是“房子（数据文件）”坏了。</li>
+<li><strong>正确使用 CLI 命令</strong>：读取配置不需要带 <code>gateway</code>，正确语法是 <code>openclaw config get agents</code>。</li>
+<li><strong>区分静态配置和运行时环境</strong>：排错时，如果 Systemd 起不来，可以使用 <code>sudo -u ubuntu env -i HOME=/home/ubuntu ...</code> 来模拟干净环境排查，直接定位是服务脚本写错了还是程序本身的 Bug。</li>
+</ol>
+<h1 id="遇到的问题目前还没有着手解决的">遇到的问题目前还没有着手解决的：</h1>
+<ol>
+<li>如何修改主agent使用的模型：<br>
+之前一修改就挂掉，很诡异。</li>
+<li>如何配置备用模型：<br>
+按说主模型失效后会访问备用模型，官方都是有配置方式的，但就是不生效。</li>
+<li>如何设置多agent：<br>
+这个有思路，应该就是设置多个bot就可以。但不知道是否还有其它简便方式。</li>
+<li>如何在agent下设置多session：<br>
+这个也有思路，就是首先让bot可以接受群信息，然后拉bot到不同群，并获取到群id，通过不同地群id设置多个session，不同session执行不同地工作。不过这样session是否可以配置不同模型？我看后台是可以选择的，但按照目前openclaw的操行，是否能生效，未知，需要调试。</li>
+<li>如何设置一个主agent，然后让这个主agent根据任务特性来分配由哪个模型来完成任务。</li>
+</ol>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[折腾CosyVoice3]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/zhe-teng-cosyvoice3/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/zhe-teng-cosyvoice3/">
+        </link>
+        <updated>2025-12-25T16:02:28.000Z</updated>
+        <summary type="html"><![CDATA[<p>想在本地部署一个CosyVoice玩儿一下。其实挺简单的，只不过由于硬件环境+不熟悉Linux系统，导致折腾里好几遍。现在想想，还是自己太蠢了……总之，先记录下吧。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>想在本地部署一个CosyVoice玩儿一下。其实挺简单的，只不过由于硬件环境+不熟悉Linux系统，导致折腾里好几遍。现在想想，还是自己太蠢了……总之，先记录下吧。</p>
+<!-- more -->
+<p>先罗列下资源：<br>
+GitHub项目：<br>
+https://github.com/FunAudioLLM/CosyVoice</p>
+<p>参考视频：<br>
+【【AI音色克隆】超强AI音色克隆，CosyVoice，最新模型，速度超级快！附上本地安装教程！】 https://www.bilibili.com/video/BV1Dwx4e2ESu/?share_source=copy_web&amp;vd_source=4ea10cc08ac122b783b99dc60d34ca79</p>
+<p>【CosyVoice3 本地部署！声音克隆 TTS！支持9种语言，18种中文方言！消费级显卡可运行！】 https://www.bilibili.com/video/BV1cDqqBeEtN/?share_source=copy_web&amp;vd_source=4ea10cc08ac122b783b99dc60d34ca79</p>
+<p>第一遍折腾：<br>
+第一遍巨蠢，太依赖AI了。什么东西都没看，连GitHub项目地址都没细看，直接扔给AI（perplexity pro的GPT5.2），让它帮我解读并给出部署步骤。</p>
+<p>整体给的框架其实是对的，根据我的软硬件条件，给出了在WIN10下通过WSL和Docker部署的几个方式。然后我选了最蠢的docker部署……因为它说最简单…</p>
+<p>过程非常痛苦。因为我之前docker有部署一个本地的知识库，而且还把docker安装到了C盘。所以第一遍不只是部署项目，还加上了迁移docker，以及解决另一个超他妈奇怪的问题（局域网下，两台机器访问时会出现间歇性断开情况，这个问题也是巨逼奇怪！好在最后也算是不完美解决了，回头但开一个帖子记录下）。</p>
+<p>第一遍不细说了，算是让我对docker使用有了进一步了解吧~</p>
+<p>第二遍折腾：<br>
+改用WSL安装Ubuntu，然后部署项目。政体过程其实和docker差不多，也都要安装conda然后在独立环境下进行部署。<br>
+这一遍是按照资料中本地部署的视频来的。其实应该一遍搞定的，结果遇到了一个蠢死自己的小问题……Linux环境下对于大小写敏感，部署资料中给的原码CosyVoice这个子目录有两个大写字母，而代码中都用的是小写。AI也是蠢的可以，完全没给我说这种情况，然后指着它一同瞎几把改。改的我都想删环境了……虽然webui算是跑起来了，但模型上有问题，一直报错无法生成语音。</p>
+<p>第三遍折腾：<br>
+换了参考视频中第一条视频，改用在win10环境下，直接安装conda来部署。其实整体逻辑是一样的，都是通过conda来分离独立环境进行项目部署。只不过，这次傻逼在硬件环境上了……</p>
+<p>由于用的是RTX50系显卡，虽然cuda13和cuDNN的安装都没问题，但pytorch最新版本在WIN环境下对于50系显卡支持有问题，导致最终webui运行了，但模型仍然无法使用。</p>
+<p>第四遍折腾：<br>
+还是换回到WSL的Ubuntu环境了…<br>
+先来到之前clone好的项目文件下，git pull了最新的代码。因为之前的依赖都弄好了，所以这次只是改了下第二遍中那个愚蠢的大小写问题。<br>
+然后运行，遇到了新问题：关于音频编码。<br>
+这次AI倒是挺给力的（不得不说，遇到代码问题的情况下，还是Claude系比OpenAI的好使），直接给出具体的代码，最终使用soundfile库来生成文件。<br>
+哦对了，还有一个细节问题。原文件下几个主要的执行py文件，里边关于模型的code需要按照本地模型路径下的文件进行修改。<br>
+还有模型下载上，第二遍折腾时，WSL环境下的模型下载有点儿问题。AI分析日志后给出这个结论后，我用第三遍折腾时在WIN环境下载的模型做了替换后就正常了。其实环境本身不重要，应该还是我第二遍部署时出现的问题。</p>
+<p>最后：<br>
+玩儿了一阵子，这个项目还挺有趣，本地生成的速度也还可以。大约比官网生成的速度慢了一倍吧，但本地毕竟方便，消费级显卡跑这个项目绝对没问题。而且在GPU使用上，我觉得还是可以优化的。</p>
+<p>现在还有以下一些事项待解决&amp;实验：<br>
+1、用CosyVoice2 0.5B模型跑一下预训练语音，尝试用instruction的方式来生成一下。<br>
+2、清理win环境下miniconda部署残留。后续还是决定用wsl来搞了，得把miniconda清理一下。而且我还在win下单独安装cuda和cuDNN，留着吧也行，但感觉用处不大，纯占空间。<br>
+3、清理docker环境下的部署残留。我还把本地知识库给搞废了，还得重新部署一下。<br>
+4、解决下局域网其它客户机对于当前项目的访问问题。我的常用客户端是可以访问的，但还有一个端访问起来有些异常，应该不是很难解决的事儿吧，我猜…</p>
+<p>虽然够折腾，但收获也还是有的，最终结果也还不错，算是一次得到正反馈的实验吧。加油！</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[精粤B550i主板升级Zotac RTX5060记录]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/jing-yue-b550i-zhu-ban-sheng-ji-zotac-rtx5060-ji-lu/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/jing-yue-b550i-zhu-ban-sheng-ji-zotac-rtx5060-ji-lu/">
+        </link>
+        <updated>2025-11-08T23:59:34.000Z</updated>
+        <summary type="html"><![CDATA[<p>这5060的卡真是折腾死我了！幸亏结果是好的，这里做个记录汇总下。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>这5060的卡真是折腾死我了！幸亏结果是好的，这里做个记录汇总下。</p>
+<!-- more -->
+<p>前情概述：<br>
+之前自己攒了一台itx主机，就为了小巧轻便。之前攒主要是玩儿游戏用的，所以整体配置中等吧，走了一套全AMD的架构，R5 5600+RX 5600 6G短卡，搭配精粤B550i主板。双16G内存，500W全模组1U电源。其实这套整体性能表现还是可以的，除了FF7 REMAKE II这种完全不支持老卡的游戏外，能够应对绝大多数游戏了。<br>
+如今需求升级，还想要搞一些AI方面相关的东西，跑个本地模型啥的。这么一来，RX 5600这个卡就比较拉胯了。虽然ollama也有魔改支持AMD老卡的，但整体的执行效率一般，比有cuba加持的N卡或者新一些的A卡，那还是有不小距离。经过权衡比较，在25年8月入手了一块Zotac 5060的短卡——主要是符合itx结构的短卡太难找了。当然，这个卡主要是便宜，含税后合RMB也就2k，比拼多多上的同级别显卡便宜不少。</p>
+<p>入手后开始第一次折腾。<br>
+itx由于空间小，那是正经的难装又难拆。第一次折腾，花了差不多1天时间，其中大半时间都用来插拔硬件了…<br>
+之前没有用过DDU，这次也是头回用。倒是不复杂，进入安全模式先卸载A卡驱动，然后关机换卡，最后直接进系统下载最新N卡驱动安装。到这里，一切正常。我想着应该没啥问题了，就齐齐整整的把机器装回去了。<br>
+然后……想起来跑一下烤机测试啥的东西。于是先用了AIDA64里的GPGPU的benchmark，具体跑哪儿忘了，可能是显存测试还是哪里就会卡住，当然可能是版本老加上卡比较新，GPGPU并没有检测出卡有OpenGL支持。我想着能凑合用就先用吧，于是就重新装好机器，然后把所有外设插上了（除了机器内插着的两块ssd和一块2.5寸ide外，还有两块3.5和一个2.5的移动存储），进入系统后就出现间歇性卡死的情况。<br>
+经过一番和AI的沟通，初步判断是500w电源的问题。理论上是够用的，毕竟从设计功率上看，5060也就比RX5600多了个20w的耗电，但是外设一多再加上峰值功率，可能还是有些吃紧。如果当时我换成550W的电源应该就比较稳了。（BTW：我用的是游戏引力的电源，网上评价是没有虚标，整体表现不错）于是我就一咬牙，直接换了同品牌700W电源，这下就算真有虚标也是够用了的。</p>
+<p>经过两个月等待，700W电源终于运来了，这便开始了第二次折腾。<br>
+首先第一个问题是，电源。<br>
+<img src="https://ntsilverwing.github.io/blog//post-images/1762757477626.png" alt="" loading="lazy"><br>
+（电源口排线见图）<br>
+其实也不是什么大问题，只是商家给的线比较迷惑。给了两根一样的PCI-E的线，然后24pin线上有一根写着CPU，而且还有个单独标有CPU的6pin口。之前500W电源是14pin然后CPU是单独一组2+2的口。后边我咨询AI，说是700w这种较大功率电源，一般是对应多CPU的，同时PCI-E的线虽然看起来也能插到CPU的6pin口，但由于里边的排线可能不同，所以建议不要混用。于是我就直接用24pin线的那根CPU头直接插到主板CPU供电口，单独的CPU口留空，顺利点亮。<br>
+相比插线来说，拔线简直是难一万倍！尤其是ITX的线！一个是空间小，伸手费劲；另一个就是插口太紧！最后是拿着小平头螺丝，边撬边拔，才给弄下来💀</p>
+<p>顺利点亮后，换卡，运行，正常。这次长记性了，没有先把机器装回去，直接烤机。用fur mark大约烤了5分钟，一切正常。这回总能装回去了吧！装好后，遇到了第二个问题，间歇性黑屏！<br>
+真的是艹了……顶着幸运光环开始看黑屏前后的系统日志，喂给AI帮我解读，终于看到有个日志是说显卡驱动问题的。问题锁定到显卡本身，然后各种查资料，咨询AI。<br>
+发现50系显卡在一些老板子上黑屏（甚至新板子也会）并不是个例，还是挺普遍的一个情况。网上常见的解决方法大致有这几个：<br>
+1、主板上PCI-E速率改成GEN2（也有说改GEN4的）；<br>
+2、如果是DP线，则换成HDMI的；<br>
+3、还有金手指接触问题的，要使劲儿插才行；<br>
+4、显卡驱动不能装最新的，要装某个版本的；<br>
+5、……还有什么记不清了，反正50系还真的挺拉的，啥破问题都有。<br>
+我觉得这些不太对应我的问题。然后咨询AI的过程中，它有搜到redit上一个帖子，我进到原帖（https://www.reddit.com/r/buildapc/comments/1k1hhce/black_screen_after_first_time_installing_drivers/）看了下，有个回复还是很系统的，大致如下：<br>
+1、保持主板BIOS固件是最新的，设置UEFI启动，然后关闭CSM兼容支持；<br>
+2、更新显卡vBIOS。</p>
+<p>回归到我的设备上，我找了精粤官网，对于B550i并没有特别新的BIOS固件，最新的就是24年11月底的一个（https://jginyue.com.cn/index/Article/show/cat_id/43/id/128）。倒是Zotac有一个vBIOS更新UEFI Firmware Update Tool for RTX 5060 Series（https://www.zotac.com/ca/files/download/by_product?p_nid=1361402&amp;driver_type=All&amp;os=All），就是专门解决间歇性黑屏掉信号的问题的，应该是直接改的nVidia官方补丁。</p>
+<p>这两个固件更新操作都挺简单的，尤其是索泰的vBIOS更新，简单到可怕……差点儿就忘记用GPU-Z备份BIOS了。不过我更新主板固件时，还是有些冒进了。最稳妥的是换回老显卡，然后再更新，这样确保不会发生突然掉信号的情况。而且，精粤的这个主板更新后，PCI-E的速率最高也就GEN2，并不是像页面描述的说固定到GEN3。所以我其实改不改速率应该都没很大影响。<br>
+解决问题的关键应该还是显卡的vBIOS更新。这个更新解决了UEFI的硬件握手问题，避免间歇性黑屏发生。</p>
+<p>更新完后跑了一下午黑悟空，又看了一部哈利波特，没出现任何黑屏问题。看来是终于稳定了~</p>
+<p>最后吐槽50系显卡。怎么问题多成这样？早知道我直接换AMD的同级别卡了，估计也没这没费劲的。</p>
+<p>哦对了，按说关闭CSM兼容支持，硬盘如果有MBR分区的，可能兼容上有些问题，最好都是GPT分区的。这个也是折腾了一阵子，先用微软自己的转分区命令找了个下载盘实验下，失败…于是准备找第三方的，结果都是付费功能才有无损转分区的。目前也都还没转区，不过也用的好好的，算了，不折腾了~</p>
+<p>以上。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Ryujinx（龙神）模拟器如何用CE修改器]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ryujinxlong-shen-mo-ni-qi-ru-he-yong-ce-xiu-gai-qi/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ryujinxlong-shen-mo-ni-qi-ru-he-yong-ce-xiu-gai-qi/">
+        </link>
+        <updated>2025-09-23T06:48:02.000Z</updated>
+        <summary type="html"><![CDATA[<p>找不到对应游戏的金手指？找到了金手指又无法生效？这个时候就只能用Cheat Engine来修改了~</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>找不到对应游戏的金手指？找到了金手指又无法生效？这个时候就只能用Cheat Engine来修改了~</p>
+<!-- more -->
+<p>然而……如果用Ryujinx模拟的话，CE修改是找不到真实地址的。</p>
+<p>“那，你可以用yuzu啊！”<br>
+确实，用柚子的话，CE正常修改是可以找到真实地址的。但由于全球最强的任地狱法务部，柚子已经没有可用更新了，所以它在游戏支持度和模拟效果上，没有龙神表现的那么好。（虽然，龙神也被干了，但还是有在持续更新的……希望，可以坚持下去！）</p>
+<p>好了，总之我就是要用龙神就对了。那么，如何让CE可以正常找到真实地址呢？</p>
+<p>很简单：<br>
+在System-&gt;Memory Manager Mode的设置下，把内存管理模式改为Software就可以了！</p>
+<p>OK，就这么简单，然后CE就可以正常修改了。</p>
+<p>如果配置比较菜，那么改成software后，FPS会变的特别低，甚至到无法正常游戏的程度。那么，最好就是修改后马上保存，然后重新把内存管理模式改回去。</p>
+<p>以上是准备修改“浪漫沙加2 七英雄的复仇”时遇到的问题，在网上找了一遍并尝试后，这是最靠谱儿的方法了。<br>
+btw：这游戏1.1版本的金手指在龙神下没有一个管用的！淦！</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[如何让ollama支持老款AMD显卡]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ru-he-rang-ollama-zhi-chi-lao-kuan-amd-xian-qia/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ru-he-rang-ollama-zhi-chi-lao-kuan-amd-xian-qia/">
+        </link>
+        <updated>2025-09-15T15:03:16.000Z</updated>
+        <summary type="html"><![CDATA[<p>有一块RX 5600，想用来做一些AI方面的小实验，但是ollama官方默认不支持老款AMD显卡，不过还要有一些民间改版可以用。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>有一块RX 5600，想用来做一些AI方面的小实验，但是ollama官方默认不支持老款AMD显卡，不过还要有一些民间改版可以用。</p>
+<!-- more -->
+<p>分享一下win10系统下具体的实操过程以及一些坑。</p>
+<p>废话不多说，以下是具体步骤：<br>
+1、运行ollama后，先右键图标，view log一下。<br>
+查看server.log文件，找到大约第八行，有一条msg“amdgpu is not supported”，这就代表当前显卡不被支持。然后再看后边具体的显卡型号，比如我的是gpu_type=gfx1010:xnack- 。ok，记下来即可。</p>
+<p>2、退出ollama，然后到github找到“ollama-for-amd”这个项目（https://github.com/likelovewant/ollama-for-amd），直接去release里找到最新的版本下载。<br>
+下载安装版或者压缩版都可以，就是一个覆盖过程。我下载的是解压版。找到ollama具体的安装目录，然后把压缩包里的东西直接覆盖到安装目录下即可。</p>
+<p>3、然后再到github找“ROCmLibs-for-gfx1103-AMD780M-APU”这个项目（https://github.com/likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU），到release中下载最新版。<br>
+当然，最好看一下具体支撑自己gpu type的版本。我的最新版有支持，所以直接下最新的。下载完毕后解压，找到ollama安装目录，直接将解压文件copy至对应的目录下。</p>
+<p>4、重新运行ollama，再看下server.log文件。<br>
+还是第八行，如果有看到name参数后有自己显卡的具体名称，则代表已经支撑了。<br>
+然后随便运行一个模型，然后用ollama ps命令看一下，如果有看到processor有类似“39%/61% CPU/GPU”，那就确定GPU有参与到运行了。如果还是100%CPU，那就是失败，再找原因吧~</p>
+<p>好了，至此可以跑下具体模型，观察下gpu占用情况了。</p>
+<p>有一些使用上的感受/坑，记录下。<br>
+1、整体速度上有变快，但显卡整体还是拉胯，能有多明显也谈不上，跑一下小模型（比如：deepseek14b）可能还能看出来，跑稍微大一些的（如：openai的oss20b）那还是挺慢的。</p>
+<p>2、大模型一定要装在ssd中！机械硬盘的载入速度太慢了！</p>
+<p>3、如果ollama有升级，建议不要更新！当然，这个比较难。目前没有特别好的办法。<br>
+方法1：将ollama目录设置为只读。不过这会影响日志写入，并产生其它问题。<br>
+方法2：防火墙层面断掉ollama的互联网链接。这个问题就是载入模型后无法联网了。不过如果纯本地模型的话，这个倒也OK。<br>
+总之，如果有更新导致amd显卡支持问题，那就按照上述办法覆盖一遍吧。</p>
+<p>4、整体来说AMD显卡——尤其老显卡的模型运行效率不太行，玩儿AI的话，还是建议换N卡吧~</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[关于在Mihon上Suwayomi的安装与使用]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/guan-yu-zai-mihon-shang-de-suwayomi-shi-yong/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/guan-yu-zai-mihon-shang-de-suwayomi-shi-yong/">
+        </link>
+        <updated>2024-10-27T07:46:18.000Z</updated>
+        <summary type="html"><![CDATA[<p>最近发现一自制源，需要通过Suwayomi来访问，之前在用Tachiyomi时没有安装过这个插件。今天捯饬了下，花了一些时间，顺便也发现了一些相关的还挺有趣的网站，于是觉得还是记录下比较好。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>最近发现一自制源，需要通过Suwayomi来访问，之前在用Tachiyomi时没有安装过这个插件。今天捯饬了下，花了一些时间，顺便也发现了一些相关的还挺有趣的网站，于是觉得还是记录下比较好。</p>
+<!-- more -->
+<h2>名词解释</h2>
+首先几个名词科普：
+<p><a href="https://github.com/mihonapp/mihon" target="_blank" rel="noopener">Mihon</a>/<a href="https://tachiyomi.org/" target="_blank" rel="noopener">Tachiyomi</a>：看漫画的app。Tachiyomi已经不更新了，而Mihon属于正统分支续作。<br>
+<a href="https://github.com/Suwayomi" target="_blank" rel="noopener">Suwayomi</a>：属于Tachiyomi的官方插件，也可以独立运行。</p>
+<br>
+<h2>安装插件</h2>
+原本在mihon中安装Suwayomi是个非常简单的事儿。只需要添加官方源，找到插件安装即可。
+<p>这是几个插件库：其中1是Tachiyomi官方库；在mihon中可以直接使用的是2、4；第3个已经不行了</p>
+<blockquote>
+<p>1、 https://raw.githubusercontent.com/Tachiyomiorg/extensions/repo/index.min.json</p>
+<p>2、 https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json</p>
+<p>3、 https://beerpiss.github.io/Tachiyomi-unofficial-extensions/index.min.json</p>
+<p>4、 https://stevenyomi.github.io/copymanga/index.min.json</p>
+</blockquote>
+<p>可是当我输入官方库时，mihon总是提示我“仓库网址错误”，放狗找了下，也没找到合适的办法。当时脑子短路，忘掉可以单独下载插件安装就行。</p>
+<p>于是从<a href="https://tachiyomi.org/extensions/" target="_blank" rel="noopener">Tachiyomi官网</a>找来插件，单独下载进行安装就搞定了。</p>
+<p>补记：后来在Tachiyomi中输入仓库，一次性搞定，非常顺利。看来还是Mihon特意屏蔽了Tachiyomi的官方仓库地址导致的问题。</p>
+<h2>使用插件</h2>
+安装完插件记得点“信任”，然后就可以使用了。具体suwayomi的使用和一般图源是一样的，只要注意一点，就是在图源右上角的筛选中记得打开“多语言”，不然看不到suwayomi插件。
+<p>具体配置不多说了，就是点开插件的“设置”，输入地址以及访问账户密码即可。</p>
+<p>另外，可能是兼容性问题，在Mihon中安装完suwayomi会提示“已废弃”，这个不用管，正常用即可。<br>
+使用下来，确实兼容性一般，很容易崩溃。如果打开就崩溃，可以尝试在“插件”中找到suwayomi，然后进入插件详情页，找到“清除cookie”选项试一下。</p>
+<h2>几个相关站点</h2>
+<p><a href="https://kirikira.moe/" target="_blank" rel="noopener">kirikira.moe</a>：一位接近00后的blog，里边有一些开源项目的介绍，以及自己在东京旅游的游记。事前准备还是可以借鉴的。我在20多岁时，可没有人家能这么好的记录和总结自己的生活经验。值得我zhei老登学习。🙆‍♂</p>
+<p><a href="https://bangumi.tv/m/topic/group/396924" target="_blank" rel="noopener">Tachiyomi/mihon 图源求推荐</a>、<a href="https://bangumi.tv/group/topic/400016" target="_blank" rel="noopener">安卓tachij2k(tachiyomi)&amp;mihon插件简单(踩坑)测试列表</a>：这其实是两个番组计划中的讨论帖。另外，番组计划我真觉得可以成为墙内豆瓣的替代品，不过这里文青还是少，主要是二次元向为主了。当然，也幸亏它影响力弱，但凡墙内有影响力的，迟早都是被干趴的命。（这里对傻逼xxx就不开骂，怕搂不住火儿🙊</p>
+<p><a href="https://justcomics.moe/t/topic/178" target="_blank" rel="noopener">Mihon 安装及使用教程</a>：教程本身没什么，主要是这个论坛听不错的。说起ACG类BBS，还是会怀念刚上网时候的NT，那里可以算是重塑我价值观的地方。然后JustComics，这个应该属于新生代漫画fans的论坛了，准备看看新一代漫画粉都在聊什么，怎么聊。老登好奇~👴<br>
+补记：后边又刷了下这个论坛，好像没啥ugc的内容，更像是一个联合blog，还是被表象迷惑了~</p>
+<p>顺便再抓两个Suwayomi和Tachidesk项目的介绍文章。<br>
+<a href="https://blog.csdn.net/weixin_38125348/article/details/141703244" title="按住ctrl在新页面打开">Tachidesk：超强的漫画聚合阅读器</a><br>
+<a href="https://ptt-diary.tw/mobilecomm/944759" title="md不支持新页面打开语法；GitHub不支持md补充的target标签，也是服气">免費看漫畫APP，Tachiyomi跨平台方案</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[认真学英语]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ren-zhen-xue-ying-yu/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ren-zhen-xue-ying-yu/">
+        </link>
+        <updated>2023-11-27T02:41:15.000Z</updated>
+        <summary type="html"><![CDATA[<p>英语真的是学了又放、放了又学，重复的我都累了。要说普通阅读或基础交流甚至基础书写，我觉得即便是目前状态，应该也是可以应对的。<br>
+但是仅这种状态，肯定是达不到我的预期的。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>英语真的是学了又放、放了又学，重复的我都累了。要说普通阅读或基础交流甚至基础书写，我觉得即便是目前状态，应该也是可以应对的。<br>
+但是仅这种状态，肯定是达不到我的预期的。</p>
+<!-- more -->
+<p>我自认为对于汉语的掌握还算可以，我希望英语——虽然不说变成母语程度，但至少能让我的表达不受太大局限。所以，英语必须要提高，没有上限。</p>
+<p>这里做两个用途：<br>
+1、收集一些不错的学习分享以及资料；<br>
+2、整理自己的想法，做好阶段性的学习计划。</p>
+<p>先收集一个：<br>
+<a href="https://byoungd.github.io/English-level-up-tips/#/" target="_blank" rel="noopener">离谱的英语学习指南</a></p>
+<p>最近又看到一个关于精读训练的<a href="https://twitter.com/taiyou_zai/status/1608720175129591808" target="_blank" rel="noopener">推文</a>，比较符合个人认知。用GPT4总结了下：<br>
+<quote></p>
+<ol>
+<li>基本方法：通过模仿YouTube视频中的英语母语者，直到能完美复述。</li>
+<li>纠正发音方法：发现通过模仿母语者讲话最有效，而不是仅学习发音课或IPA音标。</li>
+<li>遇到发音难点的处理：在难以发音的单词或音标上额外练习，逐步提高视频播放速度来匹配。</li>
+<li>发音标准的重要性：认为发音标准是学习语言的首要任务，影响词汇记忆和听力。</li>
+<li>学习语言的方法：重视“重复”的学习方法，通过反复练习某个音频或段落。</li>
+<li>肌肉记忆的作用：强调通过重复到达不需思考就能复述的程度，类似肌肉记忆。<br>
+</quote></li>
+</ol>
+<p>选择一段适合的视频比较重要，不能太无趣、太空洞，需要积攒一些这类素材。</p>
+<p>关于“旋元佑的语法书”比较，知乎上的帖子比较详细，不过只介绍到13年的版本，实际上19年还有一个新版，从豆瓣上看19年的版本会更好一些。<br>
+这里先有个结论：买新的！<br>
+<a href="https://www.zhihu.com/question/22756041" target="_blank" rel="noopener">网上盛传的《旋元佑英文文法书旧稿》与《文法俱乐部》和《语法俱乐部》有什么关系？</a><br>
+然后网上还有个非商用的电子版，放到这里备查。<a href="https://grammar.codeyu.com/" target="_blank" rel="noopener">旋元佑进阶文法</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[爱笑聚又关了]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ting-shuo-axj-dao-liao/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ting-shuo-axj-dao-liao/">
+        </link>
+        <updated>2023-11-13T01:04:36.000Z</updated>
+        <summary type="html"><![CDATA[<p>爱笑聚这次关的时间估计会比较久，之前在blog中备了一些资源站，结果域名直接被端，看来还是github这个靠谱儿些，以后还是来这里更新吧... ...</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>爱笑聚这次关的时间估计会比较久，之前在blog中备了一些资源站，结果域名直接被端，看来还是github这个靠谱儿些，以后还是来这里更新吧... ...</p>
+<!-- more -->
+<p>来自废弃blog的2023-5-30消息：</p>
+<p>听说RARBG倒了。大致原因是俄罗斯跟乌克兰打仗，导致机房费用激增无法负担；另外，之前都还是一起工作的同事，结果要在战场上兵戎相见。</p>
+<p>第二条真是最悲哀的事了~可惜普京内老王八还要打仗！独裁者关心的从来都不是百姓生活，而是一己私欲。希望乌克兰大反攻，直接把普京政权干细碎！还俄罗斯民众一个自由民主的开放社会！</p>
+<p>说多了，这里只是要说RARBG还没完全倒掉。这个<a href="https://rarbg.so/" target="_blank" rel="noopener">RARBG聚合页</a>中还有一些域名在提供服务。权当留存一些希望了的种子了~</p>
+<p>新消息：有人用现代技术完全<a href="https://therarbg.com/" target="_blank" rel="noopener">重制了rarbg前端</a></p>
+<p>----------------------历史分割线--------------------------</p>
+<p>前两天又恢复了。这里当成站点收集得了~</p>
+<p> </p>
+<p>还有以下替代：</p>
+<p><a href="https://www.gying.net/" target="_blank" rel="noopener">无名小站</a></p>
+<p><a href="https://www.yinfans.me/" target="_blank" rel="noopener">音范丝</a></p>
+<p><a href="https://www.dytt89.com" target="_blank" rel="noopener">电影天堂</a></p>
+<p><a href="https://gaoqing.fm/" target="_blank" rel="noopener">高清电台</a></p>
+<p><a href="https://www.mini4k.com/" target="_blank" rel="noopener">迷客电影</a></p>
+<p><a href="http://pianyuan.org/" target="_blank" rel="noopener">片源网</a></p>
+<p><a href="https://www.cilixiong.com/" target="_blank" rel="noopener">磁力熊</a>：在线影视站，支持磁力下载，电影都是精选过的，类似“低端影视”</p>
+<p>pt站(以下仅介绍)</p>
+<p><a href="http://www.ptyqm.com/28676.html" target="_blank" rel="noopener">馒头</a></p>
+<p><a href="https://www.ptziyuan.com/746.html" target="_blank" rel="noopener">ttg</a></p>
+<p>持续更新</p>
+<p> </p>
+<p>还有<a href="https://mp.weixin.qq.com/s/sKRufFeWvifaC8JR1JjZeA" target="_blank" rel="noopener">米奇老师</a>的</p>
+<p>还有一个<a href="https://jubt.fun/cn/index.html" target="_blank" rel="noopener">bt聚合</a>，乱七八糟啥都有</p>
+]]></content>
+    </entry>
+</feed>

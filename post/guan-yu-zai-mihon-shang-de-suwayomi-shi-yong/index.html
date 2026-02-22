@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>关于在Mihon上Suwayomi的安装与使用 | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1771751244529">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1771751244529" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://mihon.app/home/phone.light.webp')">
+            </div>
+          
+          <h2 class="post-title">关于在Mihon上Suwayomi的安装与使用</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2024-10-27</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/xAm4xWqmGO/">
+                    漫画
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>最近发现一自制源，需要通过Suwayomi来访问，之前在用Tachiyomi时没有安装过这个插件。今天捯饬了下，花了一些时间，顺便也发现了一些相关的还挺有趣的网站，于是觉得还是记录下比较好。</p>
+<!-- more -->
+<h2>名词解释</h2>
+首先几个名词科普：
+<p><a href="https://github.com/mihonapp/mihon" target="_blank" rel="noopener">Mihon</a>/<a href="https://tachiyomi.org/" target="_blank" rel="noopener">Tachiyomi</a>：看漫画的app。Tachiyomi已经不更新了，而Mihon属于正统分支续作。<br>
+<a href="https://github.com/Suwayomi" target="_blank" rel="noopener">Suwayomi</a>：属于Tachiyomi的官方插件，也可以独立运行。</p>
+<br>
+<h2>安装插件</h2>
+原本在mihon中安装Suwayomi是个非常简单的事儿。只需要添加官方源，找到插件安装即可。
+<p>这是几个插件库：其中1是Tachiyomi官方库；在mihon中可以直接使用的是2、4；第3个已经不行了</p>
+<blockquote>
+<p>1、 https://raw.githubusercontent.com/Tachiyomiorg/extensions/repo/index.min.json</p>
+<p>2、 https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json</p>
+<p>3、 https://beerpiss.github.io/Tachiyomi-unofficial-extensions/index.min.json</p>
+<p>4、 https://stevenyomi.github.io/copymanga/index.min.json</p>
+</blockquote>
+<p>可是当我输入官方库时，mihon总是提示我“仓库网址错误”，放狗找了下，也没找到合适的办法。当时脑子短路，忘掉可以单独下载插件安装就行。</p>
+<p>于是从<a href="https://tachiyomi.org/extensions/" target="_blank" rel="noopener">Tachiyomi官网</a>找来插件，单独下载进行安装就搞定了。</p>
+<p>补记：后来在Tachiyomi中输入仓库，一次性搞定，非常顺利。看来还是Mihon特意屏蔽了Tachiyomi的官方仓库地址导致的问题。</p>
+<h2>使用插件</h2>
+安装完插件记得点“信任”，然后就可以使用了。具体suwayomi的使用和一般图源是一样的，只要注意一点，就是在图源右上角的筛选中记得打开“多语言”，不然看不到suwayomi插件。
+<p>具体配置不多说了，就是点开插件的“设置”，输入地址以及访问账户密码即可。</p>
+<p>另外，可能是兼容性问题，在Mihon中安装完suwayomi会提示“已废弃”，这个不用管，正常用即可。<br>
+使用下来，确实兼容性一般，很容易崩溃。如果打开就崩溃，可以尝试在“插件”中找到suwayomi，然后进入插件详情页，找到“清除cookie”选项试一下。</p>
+<h2>几个相关站点</h2>
+<p><a href="https://kirikira.moe/" target="_blank" rel="noopener">kirikira.moe</a>：一位接近00后的blog，里边有一些开源项目的介绍，以及自己在东京旅游的游记。事前准备还是可以借鉴的。我在20多岁时，可没有人家能这么好的记录和总结自己的生活经验。值得我zhei老登学习。🙆‍♂</p>
+<p><a href="https://bangumi.tv/m/topic/group/396924" target="_blank" rel="noopener">Tachiyomi/mihon 图源求推荐</a>、<a href="https://bangumi.tv/group/topic/400016" target="_blank" rel="noopener">安卓tachij2k(tachiyomi)&amp;mihon插件简单(踩坑)测试列表</a>：这其实是两个番组计划中的讨论帖。另外，番组计划我真觉得可以成为墙内豆瓣的替代品，不过这里文青还是少，主要是二次元向为主了。当然，也幸亏它影响力弱，但凡墙内有影响力的，迟早都是被干趴的命。（这里对傻逼xxx就不开骂，怕搂不住火儿🙊</p>
+<p><a href="https://justcomics.moe/t/topic/178" target="_blank" rel="noopener">Mihon 安装及使用教程</a>：教程本身没什么，主要是这个论坛听不错的。说起ACG类BBS，还是会怀念刚上网时候的NT，那里可以算是重塑我价值观的地方。然后JustComics，这个应该属于新生代漫画fans的论坛了，准备看看新一代漫画粉都在聊什么，怎么聊。老登好奇~👴<br>
+补记：后边又刷了下这个论坛，好像没啥ugc的内容，更像是一个联合blog，还是被表象迷惑了~</p>
+<p>顺便再抓两个Suwayomi和Tachidesk项目的介绍文章。<br>
+<a href="https://blog.csdn.net/weixin_38125348/article/details/141703244" title="按住ctrl在新页面打开">Tachidesk：超强的漫画聚合阅读器</a><br>
+<a href="https://ptt-diary.tw/mobilecomm/944759" title="md不支持新页面打开语法；GitHub不支持md补充的target标签，也是服气">免費看漫畫APP，Tachiyomi跨平台方案</a></p>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/ren-zhen-xue-ying-yu/">
+              <h3 class="post-title">
+                下一篇：认真学英语
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>

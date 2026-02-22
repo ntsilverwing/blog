@@ -1,0 +1,213 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>如何让ollama支持老款AMD显卡 | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1771751244529">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1771751244529" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://miro.medium.com/v2/resize:fit:1200/format:webp/1*1hiH09MKCXflTixA2bi6nA.png')">
+            </div>
+          
+          <h2 class="post-title">如何让ollama支持老款AMD显卡</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2025-09-15</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                    AI
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>有一块RX 5600，想用来做一些AI方面的小实验，但是ollama官方默认不支持老款AMD显卡，不过还要有一些民间改版可以用。</p>
+<!-- more -->
+<p>分享一下win10系统下具体的实操过程以及一些坑。</p>
+<p>废话不多说，以下是具体步骤：<br>
+1、运行ollama后，先右键图标，view log一下。<br>
+查看server.log文件，找到大约第八行，有一条msg“amdgpu is not supported”，这就代表当前显卡不被支持。然后再看后边具体的显卡型号，比如我的是gpu_type=gfx1010:xnack- 。ok，记下来即可。</p>
+<p>2、退出ollama，然后到github找到“ollama-for-amd”这个项目（https://github.com/likelovewant/ollama-for-amd），直接去release里找到最新的版本下载。<br>
+下载安装版或者压缩版都可以，就是一个覆盖过程。我下载的是解压版。找到ollama具体的安装目录，然后把压缩包里的东西直接覆盖到安装目录下即可。</p>
+<p>3、然后再到github找“ROCmLibs-for-gfx1103-AMD780M-APU”这个项目（https://github.com/likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU），到release中下载最新版。<br>
+当然，最好看一下具体支撑自己gpu type的版本。我的最新版有支持，所以直接下最新的。下载完毕后解压，找到ollama安装目录，直接将解压文件copy至对应的目录下。</p>
+<p>4、重新运行ollama，再看下server.log文件。<br>
+还是第八行，如果有看到name参数后有自己显卡的具体名称，则代表已经支撑了。<br>
+然后随便运行一个模型，然后用ollama ps命令看一下，如果有看到processor有类似“39%/61% CPU/GPU”，那就确定GPU有参与到运行了。如果还是100%CPU，那就是失败，再找原因吧~</p>
+<p>好了，至此可以跑下具体模型，观察下gpu占用情况了。</p>
+<p>有一些使用上的感受/坑，记录下。<br>
+1、整体速度上有变快，但显卡整体还是拉胯，能有多明显也谈不上，跑一下小模型（比如：deepseek14b）可能还能看出来，跑稍微大一些的（如：openai的oss20b）那还是挺慢的。</p>
+<p>2、大模型一定要装在ssd中！机械硬盘的载入速度太慢了！</p>
+<p>3、如果ollama有升级，建议不要更新！当然，这个比较难。目前没有特别好的办法。<br>
+方法1：将ollama目录设置为只读。不过这会影响日志写入，并产生其它问题。<br>
+方法2：防火墙层面断掉ollama的互联网链接。这个问题就是载入模型后无法联网了。不过如果纯本地模型的话，这个倒也OK。<br>
+总之，如果有更新导致amd显卡支持问题，那就按照上述办法覆盖一遍吧。</p>
+<p>4、整体来说AMD显卡——尤其老显卡的模型运行效率不太行，玩儿AI的话，还是建议换N卡吧~</p>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/guan-yu-zai-mihon-shang-de-suwayomi-shi-yong/">
+              <h3 class="post-title">
+                下一篇：关于在Mihon上Suwayomi的安装与使用
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>

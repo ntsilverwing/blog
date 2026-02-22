@@ -1,0 +1,225 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>精粤B550i主板升级Zotac RTX5060记录 | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1771751244529">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1771751244529" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://www.zotac.com/download/files/styles/w1024/public/product_gallery/graphics_cards/zt-b50600g-10m-image01.jpg?itok=14aeodB6')">
+            </div>
+          
+          <h2 class="post-title">精粤B550i主板升级Zotac RTX5060记录</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2025-11-08</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/VYwBYHZmaQ/">
+                    硬件
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>这5060的卡真是折腾死我了！幸亏结果是好的，这里做个记录汇总下。</p>
+<!-- more -->
+<p>前情概述：<br>
+之前自己攒了一台itx主机，就为了小巧轻便。之前攒主要是玩儿游戏用的，所以整体配置中等吧，走了一套全AMD的架构，R5 5600+RX 5600 6G短卡，搭配精粤B550i主板。双16G内存，500W全模组1U电源。其实这套整体性能表现还是可以的，除了FF7 REMAKE II这种完全不支持老卡的游戏外，能够应对绝大多数游戏了。<br>
+如今需求升级，还想要搞一些AI方面相关的东西，跑个本地模型啥的。这么一来，RX 5600这个卡就比较拉胯了。虽然ollama也有魔改支持AMD老卡的，但整体的执行效率一般，比有cuba加持的N卡或者新一些的A卡，那还是有不小距离。经过权衡比较，在25年8月入手了一块Zotac 5060的短卡——主要是符合itx结构的短卡太难找了。当然，这个卡主要是便宜，含税后合RMB也就2k，比拼多多上的同级别显卡便宜不少。</p>
+<p>入手后开始第一次折腾。<br>
+itx由于空间小，那是正经的难装又难拆。第一次折腾，花了差不多1天时间，其中大半时间都用来插拔硬件了…<br>
+之前没有用过DDU，这次也是头回用。倒是不复杂，进入安全模式先卸载A卡驱动，然后关机换卡，最后直接进系统下载最新N卡驱动安装。到这里，一切正常。我想着应该没啥问题了，就齐齐整整的把机器装回去了。<br>
+然后……想起来跑一下烤机测试啥的东西。于是先用了AIDA64里的GPGPU的benchmark，具体跑哪儿忘了，可能是显存测试还是哪里就会卡住，当然可能是版本老加上卡比较新，GPGPU并没有检测出卡有OpenGL支持。我想着能凑合用就先用吧，于是就重新装好机器，然后把所有外设插上了（除了机器内插着的两块ssd和一块2.5寸ide外，还有两块3.5和一个2.5的移动存储），进入系统后就出现间歇性卡死的情况。<br>
+经过一番和AI的沟通，初步判断是500w电源的问题。理论上是够用的，毕竟从设计功率上看，5060也就比RX5600多了个20w的耗电，但是外设一多再加上峰值功率，可能还是有些吃紧。如果当时我换成550W的电源应该就比较稳了。（BTW：我用的是游戏引力的电源，网上评价是没有虚标，整体表现不错）于是我就一咬牙，直接换了同品牌700W电源，这下就算真有虚标也是够用了的。</p>
+<p>经过两个月等待，700W电源终于运来了，这便开始了第二次折腾。<br>
+首先第一个问题是，电源。<br>
+<img src="https://ntsilverwing.github.io/blog//post-images/1762757477626.png" alt="" loading="lazy"><br>
+（电源口排线见图）<br>
+其实也不是什么大问题，只是商家给的线比较迷惑。给了两根一样的PCI-E的线，然后24pin线上有一根写着CPU，而且还有个单独标有CPU的6pin口。之前500W电源是14pin然后CPU是单独一组2+2的口。后边我咨询AI，说是700w这种较大功率电源，一般是对应多CPU的，同时PCI-E的线虽然看起来也能插到CPU的6pin口，但由于里边的排线可能不同，所以建议不要混用。于是我就直接用24pin线的那根CPU头直接插到主板CPU供电口，单独的CPU口留空，顺利点亮。<br>
+相比插线来说，拔线简直是难一万倍！尤其是ITX的线！一个是空间小，伸手费劲；另一个就是插口太紧！最后是拿着小平头螺丝，边撬边拔，才给弄下来💀</p>
+<p>顺利点亮后，换卡，运行，正常。这次长记性了，没有先把机器装回去，直接烤机。用fur mark大约烤了5分钟，一切正常。这回总能装回去了吧！装好后，遇到了第二个问题，间歇性黑屏！<br>
+真的是艹了……顶着幸运光环开始看黑屏前后的系统日志，喂给AI帮我解读，终于看到有个日志是说显卡驱动问题的。问题锁定到显卡本身，然后各种查资料，咨询AI。<br>
+发现50系显卡在一些老板子上黑屏（甚至新板子也会）并不是个例，还是挺普遍的一个情况。网上常见的解决方法大致有这几个：<br>
+1、主板上PCI-E速率改成GEN2（也有说改GEN4的）；<br>
+2、如果是DP线，则换成HDMI的；<br>
+3、还有金手指接触问题的，要使劲儿插才行；<br>
+4、显卡驱动不能装最新的，要装某个版本的；<br>
+5、……还有什么记不清了，反正50系还真的挺拉的，啥破问题都有。<br>
+我觉得这些不太对应我的问题。然后咨询AI的过程中，它有搜到redit上一个帖子，我进到原帖（https://www.reddit.com/r/buildapc/comments/1k1hhce/black_screen_after_first_time_installing_drivers/）看了下，有个回复还是很系统的，大致如下：<br>
+1、保持主板BIOS固件是最新的，设置UEFI启动，然后关闭CSM兼容支持；<br>
+2、更新显卡vBIOS。</p>
+<p>回归到我的设备上，我找了精粤官网，对于B550i并没有特别新的BIOS固件，最新的就是24年11月底的一个（https://jginyue.com.cn/index/Article/show/cat_id/43/id/128）。倒是Zotac有一个vBIOS更新UEFI Firmware Update Tool for RTX 5060 Series（https://www.zotac.com/ca/files/download/by_product?p_nid=1361402&amp;driver_type=All&amp;os=All），就是专门解决间歇性黑屏掉信号的问题的，应该是直接改的nVidia官方补丁。</p>
+<p>这两个固件更新操作都挺简单的，尤其是索泰的vBIOS更新，简单到可怕……差点儿就忘记用GPU-Z备份BIOS了。不过我更新主板固件时，还是有些冒进了。最稳妥的是换回老显卡，然后再更新，这样确保不会发生突然掉信号的情况。而且，精粤的这个主板更新后，PCI-E的速率最高也就GEN2，并不是像页面描述的说固定到GEN3。所以我其实改不改速率应该都没很大影响。<br>
+解决问题的关键应该还是显卡的vBIOS更新。这个更新解决了UEFI的硬件握手问题，避免间歇性黑屏发生。</p>
+<p>更新完后跑了一下午黑悟空，又看了一部哈利波特，没出现任何黑屏问题。看来是终于稳定了~</p>
+<p>最后吐槽50系显卡。怎么问题多成这样？早知道我直接换AMD的同级别卡了，估计也没这没费劲的。</p>
+<p>哦对了，按说关闭CSM兼容支持，硬盘如果有MBR分区的，可能兼容上有些问题，最好都是GPT分区的。这个也是折腾了一阵子，先用微软自己的转分区命令找了个下载盘实验下，失败…于是准备找第三方的，结果都是付费功能才有无损转分区的。目前也都还没转区，不过也用的好好的，算了，不折腾了~</p>
+<p>以上。</p>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/ryujinxlong-shen-mo-ni-qi-ru-he-yong-ce-xiu-gai-qi/">
+              <h3 class="post-title">
+                下一篇：Ryujinx（龙神）模拟器如何用CE修改器
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>
