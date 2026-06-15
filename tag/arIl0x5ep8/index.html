@@ -1,0 +1,333 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>openclaw | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1781550558156">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1781550558156" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+
+        <div class="current-tag-container">
+          <h2 class="title">
+            <i class="icon icon-pricetags-outline"></i> openclaw
+          </h2> 
+        </div>
+
+        
+<section class="post-item">
+    <div class="content">
+      <a href="https://ntsilverwing.github.io/blog/post/openclaw-an-quan-shi-jian-zai-an-quan-yu-ke-yong-xing-zhi-jian-zhao-dao-ping-heng/">
+        <h2 class="post-title">OpenClaw 安全实践：在安全与可用性之间找到平衡</h2>
+      </a>
+      <div class="post-abstract">
+        <p>OpenClaw 这类拥有高权限、可执行自动化任务的 AI Agent，天然就比普通工具更需要清晰的安全边界。<br>
+但真正的问题从来不是“要不要做安全”，而是“怎么做，才能既安全，又不把系统防到不好用”。<br>
+本文基于 OpenClaw Security Practice Guide安全实践的研究与落地分析，重新整理出一套更适合真实使用场景的实施框架：先做低成本、高收益的基础防护，再按阶段补齐审计、巡检和灾备，最后再按角色差异化加强多 Agent 环境下的策略配置。</p>
+
+      </div>
+      <div class="post-info">
+        <span><i class="icon icon-calendar-outline"></i> 2026-04-19</span>
+        
+          <span>
+            <i class="icon icon-pricetags-outline"></i>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/arIl0x5ep8/">
+                openclaw
+                
+                  ，
+                
+              </a>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                AI
+                
+              </a>
+            
+          </span>
+        
+      </div>
+    </div>
+    
+      <a href="https://ntsilverwing.github.io/blog/post/openclaw-an-quan-shi-jian-zai-an-quan-yu-ke-yong-xing-zhi-jian-zhao-dao-ping-heng/">
+        <div class="feature-container" style="background-image: url('https://ntsilverwing.github.io/blog//post-images/openclaw-an-quan-shi-jian-zai-an-quan-yu-ke-yong-xing-zhi-jian-zhao-dao-ping-heng.png')">
+        </div>
+      </a>
+    
+  </section>
+
+<section class="post-item">
+    <div class="content">
+      <a href="https://ntsilverwing.github.io/blog/post/bie-rang-ai-xuan-ze-xing-shi-cong-openclaw-ji-yi-ren-ge-wen-jian-de-gong-cheng-hua-chong-gou-zhi-nan/">
+        <h2 class="post-title">别让 AI “选择性失聪”：OpenClaw 记忆人格文件的工程化重构指南</h2>
+      </a>
+      <div class="post-abstract">
+        <p>事情起源于我要精简三个agent的人格文件，以节省token用量。我咨询了Gemini，结合官网和社区实践信息整理出了一个Prompt。我喂给GPT5.4，实际效果感觉还不错，于是梳理以下整个过程并附上prompt。</p>
+
+      </div>
+      <div class="post-info">
+        <span><i class="icon icon-calendar-outline"></i> 2026-04-19</span>
+        
+          <span>
+            <i class="icon icon-pricetags-outline"></i>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/arIl0x5ep8/">
+                openclaw
+                
+                  ，
+                
+              </a>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                AI
+                
+              </a>
+            
+          </span>
+        
+      </div>
+    </div>
+    
+      <a href="https://ntsilverwing.github.io/blog/post/bie-rang-ai-xuan-ze-xing-shi-cong-openclaw-ji-yi-ren-ge-wen-jian-de-gong-cheng-hua-chong-gou-zhi-nan/">
+        <div class="feature-container" style="background-image: url('https://ntsilverwing.github.io/blog//post-images/bie-rang-ai-xuan-ze-xing-shi-cong-openclaw-ji-yi-ren-ge-wen-jian-de-gong-cheng-hua-chong-gou-zhi-nan.png')">
+        </div>
+      </a>
+    
+  </section>
+
+<section class="post-item">
+    <div class="content">
+      <a href="https://ntsilverwing.github.io/blog/post/karpathy-llm-wiki-mo-shi-shen-du-diao-yan-cong-rag-dao-zeng-liang-zhi-shi-ku/">
+        <h2 class="post-title">Karpathy LLM Wiki 模式深度调研：从 RAG 到增量知识库</h2>
+      </a>
+      <div class="post-abstract">
+        <p>本文基于 Andrej Karpathy 的 GitHub Gist，深入探讨了一种创新的 LLM 知识库构建模式，并分析其在 OpenClaw 中的集成可行性。</p>
+
+      </div>
+      <div class="post-info">
+        <span><i class="icon icon-calendar-outline"></i> 2026-04-18</span>
+        
+          <span>
+            <i class="icon icon-pricetags-outline"></i>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/arIl0x5ep8/">
+                openclaw
+                
+                  ，
+                
+              </a>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                AI
+                
+              </a>
+            
+          </span>
+        
+      </div>
+    </div>
+    
+      <a href="https://ntsilverwing.github.io/blog/post/karpathy-llm-wiki-mo-shi-shen-du-diao-yan-cong-rag-dao-zeng-liang-zhi-shi-ku/">
+        <div class="feature-container" style="background-image: url('https://ntsilverwing.github.io/blog//post-images/karpathy-llm-wiki-mo-shi-shen-du-diao-yan-cong-rag-dao-zeng-liang-zhi-shi-ku.png')">
+        </div>
+      </a>
+    
+  </section>
+
+<section class="post-item">
+    <div class="content">
+      <a href="https://ntsilverwing.github.io/blog/post/wo-shi-zen-yang-zai-openclaw-shang-bu-shu-duo-agentbing-ba-ta-men-jie-ru-discord-de/">
+        <h2 class="post-title">我是怎样在 OpenClaw 上部署多 Agent，并把它们接入 Discord 的</h2>
+      </a>
+      <div class="post-abstract">
+        <p>这不是一篇&quot;照着官方文档抄配置&quot;的教程，而是一篇完整的实践复盘。<br>
+我从单 Agent 出发，最终在 Ubuntu 24 VPS 上搭出了一套可运行的 OpenClaw 多 Agent系统，并完成了 Discord 集成。过程中最有价值的部分，不是最后那份配置文件，而是中间几次关键认知修正。</p>
+
+      </div>
+      <div class="post-info">
+        <span><i class="icon icon-calendar-outline"></i> 2026-04-18</span>
+        
+          <span>
+            <i class="icon icon-pricetags-outline"></i>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/arIl0x5ep8/">
+                openclaw
+                
+                  ，
+                
+              </a>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                AI
+                
+              </a>
+            
+          </span>
+        
+      </div>
+    </div>
+    
+      <a href="https://ntsilverwing.github.io/blog/post/wo-shi-zen-yang-zai-openclaw-shang-bu-shu-duo-agentbing-ba-ta-men-jie-ru-discord-de/">
+        <div class="feature-container" style="background-image: url('https://ntsilverwing.github.io/blog//post-images/wo-shi-zen-yang-zai-openclaw-shang-bu-shu-duo-agentbing-ba-ta-men-jie-ru-discord-de.png')">
+        </div>
+      </a>
+    
+  </section>
+
+<section class="post-item">
+    <div class="content">
+      <a href="https://ntsilverwing.github.io/blog/post/chi-xu-zhe-teng-open-claw/">
+        <h2 class="post-title">持续折腾open claw</h2>
+      </a>
+      <div class="post-abstract">
+        <p>Openclaw是真好玩儿！已经玩儿了大半个月了，欲罢不能，感觉还有很多可能没有发挥出来。肯定还要继续折腾的，不过这玩儿现在也真的是鲁棒性太差，很容易就玩儿挂了。于是决定开个帖子持续更新一下。</p>
+
+      </div>
+      <div class="post-info">
+        <span><i class="icon icon-calendar-outline"></i> 2026-02-19</span>
+        
+          <span>
+            <i class="icon icon-pricetags-outline"></i>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/arIl0x5ep8/">
+                openclaw
+                
+                  ，
+                
+              </a>
+            
+              <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                AI
+                
+              </a>
+            
+          </span>
+        
+      </div>
+    </div>
+    
+      <a href="https://ntsilverwing.github.io/blog/post/chi-xu-zhe-teng-open-claw/">
+        <div class="feature-container" style="background-image: url('https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text-dark.png')">
+        </div>
+      </a>
+    
+  </section>
+
+
+<div class="pagination-container">
+  
+  
+</div>
+
+
+      </div>
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+  </body>
+</html>

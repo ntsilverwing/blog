@@ -1,0 +1,363 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>别让 AI “选择性失聪”：OpenClaw 记忆人格文件的工程化重构指南 | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1781550558156">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1781550558156" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://ntsilverwing.github.io/blog//post-images/bie-rang-ai-xuan-ze-xing-shi-cong-openclaw-ji-yi-ren-ge-wen-jian-de-gong-cheng-hua-chong-gou-zhi-nan.png')">
+            </div>
+          
+          <h2 class="post-title">别让 AI “选择性失聪”：OpenClaw 记忆人格文件的工程化重构指南</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2026-04-19</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/arIl0x5ep8/">
+                    openclaw
+                    
+                      ，
+                    
+                  </a>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                    AI
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>事情起源于我要精简三个agent的人格文件，以节省token用量。我咨询了Gemini，结合官网和社区实践信息整理出了一个Prompt。我喂给GPT5.4，实际效果感觉还不错，于是梳理以下整个过程并附上prompt。</p>
+<!-- more -->
+<h2 id="01-前言从-vibe-coding-到工程化-agent">01. 前言：从 Vibe Coding 到工程化 Agent</h2>
+<p>在 Vibe Coding 的浪潮下，我们不再仅仅将 AI 视为聊天机器人，而是将其深度集成到工作流中，作为 <strong>OpenClaw</strong> 的核心驱动。然而，许多开发者发现 Agent 跑着跑着就“傻了”：指令不听、人设崩塌、逻辑混乱。</p>
+<p>这通常不是模型的问题，而是你的 <strong>人格文件（Bootstrap Files）</strong> 出了问题。本文将从底层逻辑出发，教你如何像管理工程项目一样，重构你的 AI 记忆系统。</p>
+<hr>
+<h2 id="02-物理硬限制20000-字符的死亡线">02. 物理硬限制：20,000 字符的“死亡线”</h2>
+<p>在 OpenClaw 的架构中，系统在启动时会加载 <code>AGENTS.md</code>、<code>SOUL.md</code> 等引导文件。</p>
+<ul>
+<li><strong>静默截断 (Silent Truncation)</strong>：根据官方实证，单个引导文件加载上限约为 <strong>20,000 字符</strong>。</li>
+<li><strong>物理切除风险</strong>：一旦超限，系统会采取“中间切除”策略——保留头尾，直接删掉中间内容。如果你的核心规则（如：安全红线）恰好在文件中间，它将在物理层面消失。</li>
+<li><strong>工程对策</strong>：建议单文件控制在 <strong>15,000 字符</strong> 以内，预留 5k 缓冲区。</li>
+</ul>
+<hr>
+<h2 id="03-权重原则防御迷失在中间">03. 权重原则：防御“迷失在中间”</h2>
+<p>LLM 并非对所有文字一视同仁。研究证明，模型对文本 <strong>头部</strong> 和 <strong>尾部</strong> 的注意力最强。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">位置</th>
+<th style="text-align:left">权重类型</th>
+<th style="text-align:left">建议内容</th>
+<th style="text-align:left">逻辑依据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>头部 (0%-20%)</strong></td>
+<td style="text-align:left"><strong>定义权</strong></td>
+<td style="text-align:left">核心人设、安全红线 (Red Lines)</td>
+<td style="text-align:left">决定 AI 处理信息的“初始滤镜”</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>中间 (20%-80%)</strong></td>
+<td style="text-align:left"><strong>弱化区</strong></td>
+<td style="text-align:left">次要细节、补充示例、长文说明</td>
+<td style="text-align:left">即使被遗忘或截断，也不影响核心逻辑</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>尾部 (80%-100%)</strong></td>
+<td style="text-align:left"><strong>执行权</strong></td>
+<td style="text-align:left">强制检索令、任务触发器</td>
+<td style="text-align:left">确保 AI “起跑”前最后一眼看的是操作规范</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>避坑指南</strong>：很多人提到的“近因效应”虽然让 AI 关注末尾，但在系统提示词中，**开头的“元指令”**具有定义全局的法律效力，不可偏废。</p>
+</blockquote>
+<hr>
+<h2 id="04-架构蓝图人格文件的五维占比">04. 架构蓝图：人格文件的五维占比</h2>
+<p>为了实现职责解耦，建议按照以下比例规划你的 OpenClaw 记忆系统：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">文件维度</th>
+<th style="text-align:left">建议占比</th>
+<th style="text-align:left">核心职能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>SOUL/Identity</strong></td>
+<td style="text-align:left"><strong>5%</strong></td>
+<td style="text-align:left">身份核心与语气。<strong>建议合并</strong>，避免人设分裂。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>USER</strong></td>
+<td style="text-align:left"><strong>10%</strong></td>
+<td style="text-align:left">用户个人偏好、特定技术栈习惯（如 PHP 8.3 / PSR-12）。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>AGENTS</strong></td>
+<td style="text-align:left"><strong>25%</strong></td>
+<td style="text-align:left"><strong>核心操作协议</strong>、开发规范、安全控制（核心权重）。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>TOOLS</strong></td>
+<td style="text-align:left"><strong>10%</strong></td>
+<td style="text-align:left">工具调用的限制与特定场景说明。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>MEMORY</strong></td>
+<td style="text-align:left"><strong>50%</strong></td>
+<td style="text-align:left">动态事实、项目进度、历史决策记录。</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="05-核心实战技巧">05. 核心实战技巧</h2>
+<h3 id="1-双语隔离策略">1. 双语隔离策略</h3>
+<ul>
+<li><strong>英文</strong>：用于代码注释标准、变量命名规则、技术规范（确保 AI 输出符合工业标准）。</li>
+<li><strong>中文</strong>：用于执行计划、反馈逻辑、业务背景解释（确保人类理解的直观性）。</li>
+</ul>
+<h3 id="2-强制检索令-memory-first">2. 强制检索令 (Memory-First)</h3>
+<p>在 <code>AGENTS.md</code> 的尾部必须注入逻辑锁死：</p>
+<blockquote>
+<p><code>[任何任务前] -&gt; 调用 memory_search 检索 MEMORY.md</code><br>
+避免 AI 基于过时的信息“瞎猜”。</p>
+</blockquote>
+<h3 id="3-极简-markdown-表达">3. 极简 Markdown 表达</h3>
+<p>剔除所有“请、建议、作为一个 AI”等废话。使用程序化逻辑：</p>
+<ul>
+<li><strong>错误示例</strong>：“请你尽量在写代码的时候注意不要修改 .env 文件。”</li>
+<li><strong>正确写法</strong>：<code>[Red Line] 禁止任何涉及修改或读取 .env 文件的操作。</code></li>
+</ul>
+<hr>
+<h2 id="06-终极工具openclaw-记忆架构优化-prompt-v40">06. 终极工具：OpenClaw 记忆架构优化 Prompt (V4.0)</h2>
+<p>你可以直接将以下 Prompt 发送给 LLM ，驱动其帮你完成重构：</p>
+<pre><code class="language-markdown"># OpenClaw 记忆架构优化专家指令 (V3.0)
+
+## 任务背景
+你现在是一名专门负责 **OpenClaw (Official Framework)** 架构优化的顶级专家。你的任务是审计并重构我提供的 **OpenClaw 全套人格文件**（包括但不限于 AGENTS, SOUL, USER, TOOLS, MEMORY 等）。你必须基于 L4 程序性记忆标准，确保整个系统职责清晰、无逻辑冲突且 Token 效率极高。
+
+## 架构硬约束
+1. **单文件限额：** 严禁超过 15,000 字符（防止 20k 字符的静默截断，保留 5k 缓冲区）。
+2. **位置敏感逻辑：** 核心规则必须置于文件头部（前 70%）或尾部（后 20%）。
+3. **全局容量配比建议：** - **SOUL/Identity (5%):** 核心人设与语调。
+    - **USER (10%):** 用户偏好、习惯与特定项目背景。
+    - **AGENTS (25%):** 核心行为逻辑、开发协议、安全红线。 (已根据反馈适度上调)
+    - **TOOLS (10%):** 工具使用限制。
+    - **MEMORY (50%):** 项目动态事实、长期记忆、技术决策记录。
+
+## 防幻觉与深度审计标准
+- **权威对齐：** 所有的优化逻辑必须符合 OpenClaw “先检索、后思考、再执行”的官方工作流。
+- **全局冲突审计：** 必须扫描【所有】上传文件。识别并指出文件间的冗余或逻辑矛盾。*注意：AGENTS.md 中的规则不应与 SOUL.md 中的人设冲突，更不应在 MEMORY.md 中存储本该属于 AGENTS 的通用规则。*
+- **宁缺毋滥：** 删除所有礼貌性废话、修饰词及“作为一个 AI”之类的声明。
+
+## 第一阶段：全局审计报告（请先执行）
+在重构前，请分析我上传的所有文件并输出：
+1. **文件分布地图：** 列出当前所有文件的字符数及占比。
+2. **逻辑冲突报告：** 明确指出哪些内容在不同文件中重复（例如 USER 里的偏好在 AGENTS 里又写了一遍）。
+3. **内容迁移建议：** 识别应从静态规则（AGENTS）迁移至动态事实（MEMORY）的具体段落，反之亦然。
+4. **清理方案：** 标出可直接剔除的无效 Token。
+
+## 第二阶段：重构标准（待我确认后执行）
+- **极简 Markdown：** 仅使用 H1/H2 + 列表，使用 `[条件] -&gt; [动作]` 的程序化表达。
+- **检索强制令：** 在 AGENTS 头部注入：*“在处理任何指令前，必须检索 MEMORY.md 以对齐最新的项目进度与上下文。”*
+- **双语策略：** 技术标准、变量名、代码注释用英文；执行计划、反馈与解释用中文。
+
+
+请在准备好后告知我，我将上传所有源文件，你将立即启动【第一阶段：全局审计报告】。
+</code></pre>
+<hr>
+<h2 id="07-实际应用">07. 实际应用</h2>
+<p>在实际应用中，Claude sonnet 4.6表现一般，GPT5.4还可以，推荐开启thinking后使用。<br>
+另外，我的是多agent，可以在提示词中提前声明以下信息：</p>
+<ul>
+<li>
+<ol>
+<li>有几个agent，分别是什么作用。</li>
+</ol>
+</li>
+<li>
+<ol start="2">
+<li>目前上传的哪个agent的文件。</li>
+</ol>
+</li>
+<li>
+<ol start="3">
+<li>需要注意几个agent间的联系，不要优化后切断了彼此联系。</li>
+</ol>
+</li>
+</ul>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/karpathy-llm-wiki-mo-shi-shen-du-diao-yan-cong-rag-dao-zeng-liang-zhi-shi-ku/">
+              <h3 class="post-title">
+                下一篇：Karpathy LLM Wiki 模式深度调研：从 RAG 到增量知识库
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>

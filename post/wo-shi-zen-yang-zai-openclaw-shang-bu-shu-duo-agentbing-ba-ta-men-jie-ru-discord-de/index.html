@@ -1,0 +1,540 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>我是怎样在 OpenClaw 上部署多 Agent，并把它们接入 Discord 的 | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1781550558156">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1781550558156" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://ntsilverwing.github.io/blog//post-images/wo-shi-zen-yang-zai-openclaw-shang-bu-shu-duo-agentbing-ba-ta-men-jie-ru-discord-de.png')">
+            </div>
+          
+          <h2 class="post-title">我是怎样在 OpenClaw 上部署多 Agent，并把它们接入 Discord 的</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2026-04-18</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/arIl0x5ep8/">
+                    openclaw
+                    
+                      ，
+                    
+                  </a>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                    AI
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>这不是一篇&quot;照着官方文档抄配置&quot;的教程，而是一篇完整的实践复盘。<br>
+我从单 Agent 出发，最终在 Ubuntu 24 VPS 上搭出了一套可运行的 OpenClaw 多 Agent系统，并完成了 Discord 集成。过程中最有价值的部分，不是最后那份配置文件，而是中间几次关键认知修正。</p>
+<!-- more -->
+<h2 id="一-我为什么要折腾多-agent">一、我为什么要折腾多 Agent</h2>
+<p>一开始，我的目标很明确：我不想让一个大而全的 Agent 既负责聊天、又负责搜索、还负责写代码和运维。这样虽然&quot;能用&quot;，但任务一复杂，角色就会混乱，模型成本和上下文负担也会一起上升。</p>
+<p>所以我决定把系统拆成三个角色：</p>
+<ul>
+<li><strong>主脑 mainbrain</strong>：负责和我对话、理解任务、拆解任务、调用其他 Agent、汇总最终结果</li>
+<li><strong>外脑 MAGI</strong>：负责搜索、调研、长文档分析、补充思路和提供外部参考</li>
+<li><strong>码农 codefarmer</strong>：负责工具调用、代码编写、自主测试、排错和运维执行</li>
+</ul>
+<p>从结果上看，这个方向是对的。真正难的不是&quot;定义三个名字&quot;，而是让这三个 Agent 在 OpenClaw 的实际机制里稳定协作起来。</p>
+<hr>
+<h2 id="二-最初的错误直觉让-discord-里的-bot-互相">二、最初的错误直觉：让 Discord 里的 Bot 互相 @</h2>
+<p>我最早的设想其实很自然：既然我已经在 Discord 里配了多个 bot，那是不是可以让主脑 bot 在频道里直接 @MAGI 或 @codefarmer，把子任务派出去，等它们做完再 @ 主脑回报结果？</p>
+<p>但这个思路后来被我彻底放弃了。原因不是&quot;不优雅&quot;，而是<strong>不稳定</strong>：在 OpenClaw 的多 Bot 场景里，bot 消息过滤、<code>allowBots/respondToBots</code> 行为的覆盖冲突、共享频道造成的上下文污染，以及最危险的 Ping-Pong 死循环，都会让&quot;Bot 互相 @&quot;变成一个很脆弱的方案。</p>
+<p>我后来确认下来的结论是：</p>
+<ul>
+<li><strong>Discord 更适合做人类可见的 UI 层</strong>，不适合作为 Agent 之间的真实通信总线</li>
+<li><strong>Agent 之间的协作，应该走 OpenClaw 内建的 <code>sessions_send</code> / <code>sessions_spawn</code></strong></li>
+<li>如果一定要在 Discord 里做可视化过程展示，也应该让它只承担&quot;展示&quot;和&quot;旁路通知&quot;的职责，而不是让 Bot 彼此靠频道消息驱动</li>
+</ul>
+<p>这一步认知变化，基本决定了后面整套架构会不会稳。</p>
+<hr>
+<h2 id="三-真正可行的通信方式discord-做-uisession-工具做调度">三、真正可行的通信方式：Discord 做 UI，Session 工具做调度</h2>
+<p>搞清楚这个问题之后，整个系统的理解就清楚了：<strong>用户在 Discord 里跟主脑对话，主脑在底层通过 OpenClaw 的 session 机制调度其他 Agent，子 Agent 的结果再回到主脑，由主脑统一对外输出。</strong></p>
+<p>这里有两个关键工具：</p>
+<h3 id="sessions_spawn适合一次性子任务"><code>sessions_spawn</code>：适合一次性子任务</h3>
+<p>如果主脑需要临时派发一个独立任务，比如&quot;去调研某个方案&quot;&quot;分析这份文档&quot;&quot;生成一份报告&quot;，那更适合用 <code>sessions_spawn</code>。它会创建一个新的隔离 session，子任务在后台跑，完成后再回传结果。</p>
+<p>这类任务很像&quot;开一个子进程&quot;。配合 <code>thread: true</code> 参数使用，复杂任务的过程会折叠进 Discord Thread，这样既能监工，又不会把主频道刷爆。</p>
+<pre><code class="language-js">// 主脑调用示例
+sessions_spawn({
+  task: &quot;请调研最新的前端框架并总结要点&quot;,
+  label: &quot;research-task-01&quot;,
+  agentId: &quot;magi&quot;,
+  runTimeoutSeconds: 120,
+  thread: true   // 复杂任务推荐加这个，过程折叠进 Thread
+})
+</code></pre>
+<p>执行后立即返回 <code>{ status: &quot;accepted&quot;, runId, childSessionKey }</code>，子任务在后台跑，完成后结果自动回传主脑。</p>
+<h3 id="sessions_send适合和常驻-agent-持续协作"><code>sessions_send</code>：适合和常驻 Agent 持续协作</h3>
+<p>如果目标 Agent 本来就是常驻的，比如 codefarmer 长期负责同一个代码库的调试，那更适合用 <code>sessions_send</code>。它不是新建一次性子任务，而是给已有 session 发消息，可以进行有限轮次的来回交流。</p>
+<pre><code class="language-js">sessions_send({
+  sessionKey: &quot;agent:codefarmer:main&quot;,
+  message: &quot;帮我 review 这段代码并给出修改建议&quot;,
+  timeoutSeconds: 60   // 等待 60 秒回复
+})
+</code></pre>
+<p><strong>一次性任务</strong>和<strong>持续协作</strong>在 OpenClaw 里是两套不同机制，理解这个区别非常重要。</p>
+<hr>
+<h2 id="四-从能跑到正确单-gateway-多-agent-的几个硬坑">四、从&quot;能跑&quot;到&quot;正确&quot;：单 Gateway 多 Agent 的几个硬坑</h2>
+<h3 id="坑一一个-agent-必须对应一个独立-bot-token-accountid">坑一：一个 Agent 必须对应一个独立 Bot Token / accountId</h3>
+<p>单 Gateway 多 Agent 并不是&quot;一个 Telegram Bot / 一个 Discord Bot 然后路由给多个 Agent&quot;，而是<strong>每个 Agent 都应该有独立的 bot 账号和独立 <code>accountId</code></strong>，然后通过 <code>bindings</code> 绑定到对应 agent。</p>
+<pre><code class="language-json5">channels: {
+  telegram: {
+    accounts: {
+      default:    { botToken: &quot;TOKEN_FOR_MAINBRAIN&quot; },
+      magi:       { botToken: &quot;TOKEN_FOR_MAGI&quot; },
+      codefarmer: { botToken: &quot;TOKEN_FOR_CODEFARMER&quot; },
+    },
+  },
+  discord: {
+    accounts: {
+      default:    { token: &quot;DISCORD_TOKEN_MAINBRAIN&quot; },
+      magi:       { token: &quot;DISCORD_TOKEN_MAGI&quot; },
+      codefarmer: { token: &quot;DISCORD_TOKEN_CODEFARMER&quot; },
+    },
+  },
+},
+</code></pre>
+<p>这点尤其影响 Discord。因为在同一个 guild 里，如果只是写多条 binding 而不区分 <code>accountId</code>，最后往往只有最后一条生效，表面上像&quot;配置写了&quot;，实际上路由是错的。</p>
+<h3 id="坑二agentdir-和-workspace-不是一回事">坑二：<code>agentDir</code> 和 workspace 不是一回事</h3>
+<p>OpenClaw 里每个 Agent 还有独立的 <code>agentDir</code>（存放 auth profiles、model registry 等内容），<strong>绝对不能多个 Agent 共用</strong>，否则 session 和认证很容易冲突。</p>
+<p>真正的多 Agent 隔离，不只是&quot;每人一个工作目录&quot;，而是&quot;每人一套 agentDir + workspace + accountId&quot;三者全部独立。</p>
+<pre><code class="language-bash"># agentDir 由 openclaw agents add 自动创建，无需手动创建
+# 但如果多个 Agent 需要共享同一个 API 凭证，需手动复制：
+cp ~/.openclaw/agents/mainbrain/agent/auth-profiles.json \
+   ~/.openclaw/agents/magi/agent/auth-profiles.json
+</code></pre>
+<h3 id="坑三从单-agent-迁移不能硬改要平滑过渡">坑三：从单 Agent 迁移不能硬改，要平滑过渡</h3>
+<p>我的环境不是从零开始的，而是已经跑通了 Ubuntu 24 VPS + CLI 安装 + Node.js v22+ + TG 和 Discord 的单机器人版本。</p>
+<p>所以更稳的迁移路径是：</p>
+<pre><code class="language-bash"># 1. 先备份旧配置
+cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.bak
+
+# 2. 把原有 workspace 改名为 workspace-mainbrain
+mv ~/.openclaw/workspace ~/.openclaw/workspace-mainbrain
+
+# 3. 在配置中显式声明现有 bot 为 main agent 的默认账号
+
+# 4. 先确认原有功能不中断，再逐步添加新 agent 和 bindings
+openclaw gateway restart
+</code></pre>
+<p>这个迁移视角，比&quot;新手从零搭建教程&quot;更接近真实生产环境。</p>
+<h3 id="坑四ubuntu-vps-上一定要上-systemd">坑四：Ubuntu VPS 上一定要上 systemd</h3>
+<p>只靠 <code>openclaw gateway start</code> 远远不够。SSH 断开、进程异常退出、服务器重启，都会导致服务中断。对外看，补一个 systemd service 文件只是&quot;小操作&quot;，但它是&quot;玩具系统&quot;和&quot;长期运行系统&quot;的分水岭：</p>
+<pre><code class="language-ini"># /etc/systemd/system/openclaw.service
+[Unit]
+Description=OpenClaw Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=youruser
+WorkingDirectory=/home/youruser
+ExecStart=/usr/local/bin/openclaw gateway
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<pre><code class="language-bash">sudo systemctl daemon-reload
+sudo systemctl enable --now openclaw
+sudo systemctl status openclaw
+sudo journalctl -u openclaw -f
+</code></pre>
+<hr>
+<h2 id="五-模型分工不是哪个强用哪个而是按角色分配">五、模型分工：不是&quot;哪个强用哪个&quot;，而是按角色分配</h2>
+<p>当架构稳定之后，开始认真处理另一个问题：三个 Agent 应该分别使用什么模型。</p>
+<p>这次我结合了模型能力、上下文窗口大小和 OpenClaw 的实际配置格式，整理出一套更像&quot;工程分工&quot;而不是&quot;排行榜崇拜&quot;的分配思路。</p>
+<h3 id="主脑优先规划与调度能力">主脑：优先规划与调度能力</h3>
+<p>主脑不是拿来刷 benchmark 的，它最重要的是任务分解、长链路规划、输出结构化结论。核心思路是：</p>
+<ul>
+<li><strong>主力模型</strong>承担全局规划（高输出 token 限制是优势）</li>
+<li><strong>超长上下文模型</strong>作为长会话接替（超过上下文阈值时接棒）</li>
+<li><strong>轻量模型</strong>负责高频短路由，减少主力 token 压力</li>
+</ul>
+<pre><code class="language-json5">// 主脑模型配置示意（OpenClaw agents.list 格式）
+{
+  id: &quot;mainbrain&quot;,
+  model: {
+    primary: &quot;z-ai/glm5&quot;,
+    fallbacks: [
+      &quot;qwen/qwen3.5-397b-a17b&quot;,          // 超长会话接替：1M 上下文
+      &quot;openrouter/z-ai/glm-4.5-air:free&quot;, // 轻量降级路由
+      &quot;openrouter/openai/gpt-oss-120b:free&quot;,
+    ],
+  },
+  thinkingDefault: &quot;low&quot;,
+  timeoutSeconds: 900,
+}
+</code></pre>
+<h3 id="外脑搜索执行和内容消化要分开看">外脑：搜索执行和内容消化要分开看</h3>
+<p>外脑不是&quot;会搜就行&quot;。真正的外脑要分成两层：<strong>前一层负责搜索执行和资料召回，后一层负责把大量材料吃进去做归纳整理。</strong> 有的模型更适合出去找资料，有的模型更适合消化超长上下文。把这两件事分开，外脑才真像&quot;智库&quot;而不是&quot;高级搜索框&quot;。</p>
+<pre><code class="language-json5">{
+  id: &quot;magi&quot;,
+  model: {
+    primary: &quot;moonshotai/kimi-k2.5&quot;,      // 262K，并行搜索执行
+    fallbacks: [
+      &quot;minimaxai/minimax-m2.5&quot;,            // 1M 上下文，大批量内容消化
+      &quot;meituan-longcat/LongCat-Flash-Thinking-2601&quot;, // 深度推理验证
+      &quot;meituan-longcat/LongCat-Flash-Lite&quot;, // 快速召回预筛选
+    ],
+  },
+  thinkingDefault: &quot;low&quot;,
+  timeoutSeconds: 600,
+}
+</code></pre>
+<h3 id="码农执行效率比全能更重要">码农：执行效率比&quot;全能&quot;更重要</h3>
+<p>码农的职责很明确：能调工具、能写代码、能看报错、能连续修，比&quot;会讲道理&quot;更重要。<code>thinkingDefault</code> 设为 <code>off</code>，优先保证执行速度；<code>timeoutSeconds</code> 设为 1800，因为运维任务天然耗时更长。</p>
+<pre><code class="language-json5">{
+  id: &quot;codefarmer&quot;,
+  model: {
+    primary: &quot;openrouter/stepfun/step-3.5-flash:free&quot;, // SWE-bench 74.4%，免费
+    fallbacks: [
+      &quot;minimaxai/minimax-m2.5&quot;,
+      &quot;meituan-longcat/LongCat-Flash-Chat&quot;,
+      &quot;openrouter/qwen/qwen3-coder:free&quot;,  // 仓库级代码理解，256K
+    ],
+  },
+  thinkingDefault: &quot;off&quot;,
+  timeoutSeconds: 1800,
+}
+</code></pre>
+<hr>
+<h2 id="六-prompt-文件结构规则为什么要拆开">六、Prompt 文件结构：规则为什么要拆开</h2>
+<p>工作区文件怎么组织，看起来是&quot;文案整理&quot;，实际上是架构问题。</p>
+<p>我中间有一段专门讨论：主脑的 <code>AGENTS.md</code> 里，到底要不要把&quot;我是 Commander，我有哪几个下属，怎么协作&quot;全都写进去。</p>
+<p><strong>最后接受的做法是拆成三层：</strong></p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AGENTS.md</code></td>
+<td>角色入口、会话启动规则、&quot;先读哪些文件&quot;的引导</td>
+</tr>
+<tr>
+<td><code>ROLE-COLLAB-RULES.md</code></td>
+<td>团队分工和协作流程，统一收口</td>
+</tr>
+<tr>
+<td><code>TOOLS.md</code></td>
+<td>工具使用边界和注意事项，包含跨 Agent 调用规范</td>
+</tr>
+</tbody>
+</table>
+<p>这样做的好处很实际：避免同一规则在多个文件里重复（浪费 token）；以后改团队结构时只改一处；把&quot;角色认知&quot;和&quot;工具避坑&quot;拆开后，Agent 的行为更稳。</p>
+<p><strong>主脑 AGENTS.md 示例（精简入口版）：</strong></p>
+<pre><code class="language-markdown"># AGENTS.md - Your Workspace
+
+This is your central command center.
+
+## Every Session
+1. Read `SOUL.md` — this is who you are.
+2. Read `USER.md` — this is who you're serving.
+3. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context.
+4. Read `MEMORY.md` for long-term curated memories.
+
+## Swarm Orchestration
+You are the **Commander**. You do not work alone.
+Before executing complex code or deep research, you MUST read
+`ROLE-COLLAB-RULES.md` to understand your team (@magi, @codefarmer)
+and how to delegate tasks to them.
+</code></pre>
+<hr>
+<h2 id="七-discord-频道结构最终定下来的布局">七、Discord 频道结构：最终定下来的布局</h2>
+<p>在 Discord 集成上，最终不再追求&quot;Bot 之间在公开频道里演戏&quot;，而是让频道职责更清晰：</p>
+<table>
+<thead>
+<tr>
+<th>频道</th>
+<th>谁在里面</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>#主脑控制台</code></td>
+<td>我 + mainbrain</td>
+<td>主入口，下发任务，看最终汇总结果</td>
+</tr>
+<tr>
+<td><code>#研究专区</code></td>
+<td>我 + MAGI</td>
+<td>直接向 MAGI 提问，或查看研究过程</td>
+</tr>
+<tr>
+<td><code>#代码车间</code></td>
+<td>我 + codefarmer</td>
+<td>直接派代码任务，查看报错和修复过程</td>
+</tr>
+<tr>
+<td><code>#系统通知</code></td>
+<td>我 + 三个 Bot（只写不读）</td>
+<td>全局进度看板，Bot 主动推送关键状态</td>
+</tr>
+</tbody>
+</table>
+<p>关键权限原则：<code>#系统通知</code> 频道所有 Bot 关闭 <code>View Channel History</code>，只保留 <code>Send Messages</code>，防止 Bot 读取彼此的状态消息然后互相触发。</p>
+<p><strong>一次完整任务的工作流：</strong></p>
+<pre><code>你（在 #主脑控制台）
+↓ &quot;帮我调研最新前端框架，写一个接入 Demo&quot;
+
+mainbrain
+↓ [底层 sessions_spawn, thread:true] → #主脑控制台 自动开 Thread
+↓ 系统通知: &quot;🧠 mainbrain: 任务拆解中...&quot; → #系统通知
+
+MAGI（在 Thread 里直播搜索过程）
+↓ 系统通知: &quot;🔬 MAGI: 开始调研...&quot; → #系统通知
+↓ 系统通知: &quot;🔬 MAGI: ✅ 调研完成&quot; → #系统通知
+↓ [结果自动回传 mainbrain]
+
+mainbrain
+↓ [底层 sessions_send → codefarmer]
+
+codefarmer（同样在 Thread 里输出代码过程）
+↓ 系统通知: &quot;💻 codefarmer: ✅ 完成，改了4个文件&quot; → #系统通知
+↓ [结果回传 mainbrain]
+
+mainbrain
+↓ 系统通知: &quot;🧠 mainbrain: 汇总完成&quot; → #系统通知
+↓ 在 #主脑控制台 输出最终汇总报告
+
+你（在 #主脑控制台 看到干净的最终结果，需要&quot;监工&quot;时点开 Thread）
+</code></pre>
+<hr>
+<h2 id="八-部署收益的实际数据">八、部署收益的实际数据</h2>
+<p>经过这一轮部署，实际记录了两个典型案例的运行数据：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均响应时间</td>
+<td>2–5 秒</td>
+<td>取决于任务复杂度</td>
+</tr>
+<tr>
+<td>Token 消耗优化</td>
+<td>40–60%</td>
+<td>通过按需加载和角色分工</td>
+</tr>
+<tr>
+<td>系统可用性</td>
+<td>99.5%+</td>
+<td>通过 fallback 机制和 systemd 守护</td>
+</tr>
+</tbody>
+</table>
+<p><strong>案例一：多 Agent 协作研究 OpenClaw Agent 人格 MD 按需加载优化方案</strong><br>
+总耗时约 8 小时，产出 7 份设计文档，Token 消耗比单 Agent 方式下降约 40–60%。</p>
+<p><strong>案例二：HDD 坏道分析</strong><br>
+mainbrain 接收需求、指派给 codefarmer，codefarmer 读取检测文件、分析坏道分布、生成分区建议，mainbrain 审核并纠正逻辑错误，全流程耗时约 5 分钟。</p>
+<hr>
+<h2 id="九-我最终理解的-openclaw-多-agent">九、我最终理解的 OpenClaw 多 Agent</h2>
+<p>走完这一轮之后，对 OpenClaw 多 Agent 的理解发生了很大变化。它不是&quot;给三个 Bot 配三个模型&quot;这么简单，而是一个同时包含<strong>路由、隔离、协作协议、工作区设计、可视化交互</strong>的系统工程。</p>
+<p>如果只看最终结果，这套系统可以概括成一句话：</p>
+<blockquote>
+<p><strong>一个主脑负责对外，一个外脑负责信息，一个码农负责执行；<br>
+Discord 是面板，Session 是总线，Workspace 文件是治理层。</strong></p>
+</blockquote>
+<hr>
+<h2 id="十-给后来者的几条经验">十、给后来者的几条经验</h2>
+<p>如果你也准备自己搭一套 OpenClaw 多 Agent，这几条最值得先知道：</p>
+<ul>
+<li><strong>不要先从&quot;Bot 怎么互相 @&quot;开始想</strong>——先把 Agent 间通信和 Discord UI 分层</li>
+<li><strong>不要偷懒复用 bot / accountId / agentDir</strong>——多 Agent 的隔离是基础，不是优化项</li>
+<li><strong>不要只关注模型强弱</strong>——先明确每个 Agent 的职责，再去选模型</li>
+<li><strong>不要把所有规则都塞进 <code>AGENTS.md</code></strong>——角色、协作、工具边界最好拆分维护</li>
+<li><strong>不要忽略长期运行问题</strong>——Ubuntu VPS 上的 systemd、备份、迁移策略都应该提前考虑</li>
+</ul>
+<hr>
+<h2 id="结语">结语</h2>
+<p>这次部署最大的收获，不是&quot;我把 OpenClaw 跑起来了&quot;，而是终于把&quot;多 Agent 系统到底该怎么落地&quot;这件事想明白了。</p>
+<p>从最开始想让 Bot 在 Discord 里彼此 @，到后来改用 <code>sessions_spawn</code> / <code>sessions_send</code>；从单一机器人，到每个 Agent 独立 bot、独立账号、独立目录；从 prompt 堆砌，到分层治理文件；从泛泛模型列表，到角色化模型分工——这整个过程本身，才是这篇文章真正值得分享的内容。</p>
+<hr>
+<p><strong>作者</strong>: MAGI + MainBrain + 人类<br>
+<strong>日期</strong>: 2026 年 4 月<br>
+<strong>环境</strong>: Ubuntu 24.04 LTS · Oracle VPS · OpenClaw 2026.3.x · Node.js v22</p>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/chi-xu-zhe-teng-open-claw/">
+              <h3 class="post-title">
+                下一篇：持续折腾open claw
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>

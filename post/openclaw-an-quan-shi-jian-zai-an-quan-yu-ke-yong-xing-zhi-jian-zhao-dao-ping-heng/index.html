@@ -1,0 +1,320 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>OpenClaw 安全实践：在安全与可用性之间找到平衡 | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1781550558156">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1781550558156" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://ntsilverwing.github.io/blog//post-images/openclaw-an-quan-shi-jian-zai-an-quan-yu-ke-yong-xing-zhi-jian-zhao-dao-ping-heng.png')">
+            </div>
+          
+          <h2 class="post-title">OpenClaw 安全实践：在安全与可用性之间找到平衡</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2026-04-19</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/arIl0x5ep8/">
+                    openclaw
+                    
+                      ，
+                    
+                  </a>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/8917BJ4OI3/">
+                    AI
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>OpenClaw 这类拥有高权限、可执行自动化任务的 AI Agent，天然就比普通工具更需要清晰的安全边界。<br>
+但真正的问题从来不是“要不要做安全”，而是“怎么做，才能既安全，又不把系统防到不好用”。<br>
+本文基于 OpenClaw Security Practice Guide安全实践的研究与落地分析，重新整理出一套更适合真实使用场景的实施框架：先做低成本、高收益的基础防护，再按阶段补齐审计、巡检和灾备，最后再按角色差异化加强多 Agent 环境下的策略配置。</p>
+<!-- more -->
+<h2 id="目录">目录</h2>
+<ul>
+<li><a href="#%E4%B8%BA%E4%BB%80%E4%B9%88-openclaw-%E7%9A%84%E5%AE%89%E5%85%A8%E9%97%AE%E9%A2%98%E4%B8%8D%E8%83%BD%E5%8F%AA%E7%9C%8B%E6%96%87%E6%A1%A3">为什么 OpenClaw 的安全问题不能只看文档</a></li>
+<li><a href="#slowmist%E6%96%B9%E6%A1%88%E7%9A%84%E6%A0%B8%E5%BF%83%E6%A1%86%E6%9E%B6">slowmist方案的核心框架</a></li>
+<li><a href="#%E8%BF%99%E5%A5%97%E6%96%B9%E6%A1%88%E7%9C%9F%E6%AD%A3%E7%9A%84%E5%AE%9E%E6%96%BD%E6%88%90%E6%9C%AC">这套方案真正的实施成本</a></li>
+<li><a href="#%E5%93%AA%E4%BA%9B%E6%8E%AA%E6%96%BD%E5%BF%85%E9%A1%BB%E5%81%9A%E5%93%AA%E4%BA%9B%E4%B8%8D%E8%A6%81%E4%B8%80%E5%BC%80%E5%A7%8B%E5%85%A8%E5%81%9A">哪些措施必须做，哪些不要一开始全做</a></li>
+<li><a href="#%E5%A4%9A-agent-%E7%8E%AF%E5%A2%83%E4%B8%8B%E5%A6%82%E4%BD%95%E5%B7%AE%E5%BC%82%E5%8C%96%E9%83%A8%E7%BD%B2">多 Agent 环境下如何差异化部署</a></li>
+<li><a href="#%E4%B8%80%E5%A5%97%E6%9B%B4%E9%80%82%E5%90%88%E8%90%BD%E5%9C%B0%E7%9A%84%E5%88%86%E9%98%B6%E6%AE%B5%E6%96%B9%E6%A1%88">一套更适合落地的分阶段方案</a></li>
+<li><a href="#%E5%87%A0%E4%B8%AA%E6%9C%80%E5%AE%B9%E6%98%93%E8%B8%A9%E5%9D%91%E7%9A%84%E5%9C%B0%E6%96%B9">几个最容易踩坑的地方</a></li>
+<li><a href="#%E7%BB%93%E5%B0%BE">结尾</a></li>
+</ul>
+<hr>
+<h2 id="为什么-openclaw-的安全问题不能只看文档">为什么 OpenClaw 的安全问题不能只看文档</h2>
+<p>最近slowmist给出了一套相对完整的 OpenClaw 安全实践方案，整体方向没有问题，而且覆盖了从事前约束、事中控制到事后巡检与恢复的完整思路。<br>
+问题在于，如果直接把所有措施一次性全量部署，实际成本并不低，尤其是在日常频繁使用、需要持续装 Skill、或者本身就在跑多 Agent 的环境里，摩擦会迅速上升。<br>
+所以真正值得讨论的，不是“这份指南对不对”，而是“哪些该优先做，哪些应该延后，哪些甚至不适合照搬”。</p>
+<p>我更认同一种工程化思路：安全措施不该只追求完整，更要考虑使用体验、实施复杂度和长期执行的可持续性。<br>
+如果一套方案只能在刚部署那天看起来很安全，但之后没人愿意维护、没人愿意遵守，那它的实际效果往往会打折。<br>
+因此，OpenClaw 的安全建设更适合用“分层、分级、分阶段”的方式推进，而不是一口气把所有配置全堆上去。</p>
+<hr>
+<h2 id="slowmist方案的核心框架">slowmist方案的核心框架</h2>
+<p>从结构上看，这套安全实践大致可以分为三层：事前、事中和事后。<br>
+事前主要是行为层的红线与黄线规则，以及 Skill 安装前的安全审计；事中主要是权限收窄、关键配置哈希基线、操作日志和高危业务风控；事后则依赖每晚自动巡检与 OpenClaw 大脑级灾备。</p>
+<p>slowmist方案强调了几个核心原则：日常零摩擦、高危必确认、每晚有巡检，以及保持零信任心态。<br>
+这些原则本身非常合理，因为它们试图同时兼顾安全性和可用性，而不是只站在某一边。<br>
+在具体措施上，重点包括红线协议、黄线协议、核心配置 <code>600</code> 权限、SHA256 哈希基线、Skill 安装前审计、夜间自动巡检，以及同步到私有 Git 仓库的灾备机制。</p>
+<hr>
+<h2 id="这套方案真正的实施成本">这套方案真正的实施成本</h2>
+<p>从可用性角度看，大多数基础措施的冲击并不大。<br>
+红线和黄线协议主要影响高危操作，日常正常使用几乎无感；<code>chmod 600</code> 属于一次性设置，后续不会持续增加负担；哈希基线也是首次建立后自动校验，日常成本很低。<br>
+真正会显著增加使用摩擦的，是 Skill 审计流程，因为它会让每次安装新 Skill 都多出人工审查步骤。</p>
+<p>从体验上看，这套方案的收益和代价都很明确。<br>
+好处是高危操作更容易被拦住，配置变更更容易被发现，每晚的安全简报也会提供一种“系统仍在可控状态”的确定感；代价则是首次配置巡检脚本有门槛，黄线操作需要记录，而且 Skill 安装速度会变慢。<br>
+从工程复杂度看，最容易卡住人的地方并不是权限配置本身，而是巡检脚本、Cron 参数和灾备链路的打通。</p>
+<p>性能方面反而不是主要问题。<br>
+研究内容里提到，巡检脚本大致在 30 到 60 秒之间，且通常安排在凌晨执行；哈希校验基本可以忽略不计；Git 备份也多为秒级增量提交。<br>
+也就是说，这套方案真正需要平衡的是“复杂度与摩擦”，而不是“性能与资源占用”。</p>
+<hr>
+<h2 id="哪些措施必须做哪些不要一开始全做">哪些措施必须做，哪些不要一开始全做</h2>
+<p>如果目标是尽快把主要风险压下来，那么最值得优先落地的是一组“低成本、高收益”的措施。<br>
+包括把红线协议写入 <code>AGENTS.md</code>、收窄核心配置权限到 <code>600</code>、建立关键文件哈希基线、补上敏感数据外发限制，以及增加防隐性投毒规则。<br>
+这几项改动加起来时间不长，但能覆盖破坏性操作、配置篡改、凭证泄露和部分供应链攻击风险。</p>
+<p>第二层适合在基础防护稳定后再补上，包括黄线操作记录、分级版 Skill 审计、核心 5 项巡检脚本，以及 Git 灾备机制。<br>
+这些措施确实会增加一定配置成本，但它们解决的是“可追溯”“可恢复”“可自动检查”这三个长期运行非常关键的问题。</p>
+<p>反过来，有几件事并不适合一上来就强推。<br>
+例如一次性全量部署 13 项巡检，会明显拉高复杂度并增加出错概率；对所有 Skill 做无差别严格审计，会严重拖慢使用体验；而使用 <code>chattr +i</code> 锁死核心配置，甚至可能和运行时读写需求冲突，导致服务异常。</p>
+<hr>
+<h2 id="多-agent-环境下如何差异化部署">多 Agent 环境下如何差异化部署</h2>
+<p>如果你的环境里不只有一个 Agent，而是像 MainBrain、MAGI、CodeFarmer 这样分工协作的多 Agent 体系，那么安全策略就不应该一刀切。<br>
+红线/黄线协议、权限收窄、哈希基线、自动巡检和 Git 灾备，属于所有 Agent 都该有的底座能力，因为这些措施与角色无关。</p>
+<p>但某些增强措施只适合特定 Agent。<br>
+比如业务风控联动更适合负责决策的 MainBrain，DLP 扫描更适合处理敏感信息的 MainBrain 与 MAGI，而以执行代码为主的 CodeFarmer，则更适合从 <code>full</code> 模式收紧到 <code>exec allowlist</code>。<br>
+对 CodeFarmer 来说，真正有效的不是抽象地“加强安全”，而是明确限制命令范围，并尽量避免让它直接操作生产环境。</p>
+<hr>
+<h2 id="一套更适合落地的分阶段方案">一套更适合落地的分阶段方案</h2>
+<p>我更建议把实施过程拆成 P0、P1、P2、P3/P4 四个阶段推进。<br>
+这样做的好处是，每一阶段都能带来明确收益，同时不会在初期把配置复杂度推得过高。</p>
+<h3 id="p010-分钟先把基础防护补齐">P0：10 分钟，先把基础防护补齐</h3>
+<p>P0 只做最关键、最不容易出问题的内容：权限收窄、哈希基线、以及把红线/黄线和防投毒规则写进 <code>AGENTS.md</code>。</p>
+<pre><code class="language-bash">chmod 600 ~/.openclaw/openclaw.json
+chmod 600 ~/.openclaw/devices/paired.json
+sha256sum ~/.openclaw/openclaw.json &gt; ~/.openclaw/.config-baseline.sha256
+</code></pre>
+<p>这一步的价值很高，因为它几乎不影响日常使用，却能马上提升配置安全性和可观测性。</p>
+<h3 id="p11-小时补审计和灾备">P1：1 小时，补审计和灾备</h3>
+<p>第二阶段建议加入黄线操作记录、防投毒检查和 Git 灾备。<br>
+黄线操作可以统一记录到 <code>memory/YYYY-MM-DD.md</code>，格式包含时间、命令、原因和结果；Skill 安装前先执行 <code>clawhub inspect --files</code>，并审查所有文本文件，包括 <code>.md</code> 和 <code>.json</code>；同时建立私有 Git 仓库，并正确配置 <code>.gitignore</code>，避免把无关或敏感内容直接同步出去。</p>
+<p>这一阶段的目标不是“做完整”，而是先让系统具备最基本的审计能力和恢复能力。</p>
+<h3 id="p23-小时开始自动巡检">P2：3 小时，开始自动巡检</h3>
+<p>第三阶段再把自动巡检接起来，而且不建议一开始就追求 13 项全覆盖。<br>
+先做核心 5 项已经足够有价值，包括 OpenClaw 安全审计、进程与网络审计、敏感目录变更、配置基线校验，以及磁盘使用检查。</p>
+<p>巡检任务可以按下面这种方式注册：</p>
+<pre><code class="language-bash">openclaw cron add \
+  --name &quot;nightly-security-audit&quot; \
+  --description &quot;每晚安全巡检&quot; \
+  --cron &quot;0 3 * * *&quot; \
+  --tz &quot;America/Denver&quot; \
+  --session &quot;isolated&quot; \
+  --message &quot;Execute this command and output the result as-is: bash ~/.openclaw/workspace/scripts/nightly-security-audit.sh&quot; \
+  --announce \
+  --channel discord \
+  --to &lt;your-chat-id&gt; \
+  --timeout-seconds 300 \
+  --thinking off
+</code></pre>
+<p>这一步真正重要的不是“把 cron 跑起来”，而是把几个细节一次配对：正确时区、isolated session、可接收消息的 chatId，以及足够的超时时间。</p>
+<h3 id="p3-p4按需增强">P3 / P4：按需增强</h3>
+<p>当基础防护、审计、巡检和灾备都稳定后，再考虑继续扩展到 13 项巡检、增加 DLP 规则、接入业务风控，以及把 Skill 审计流程进一步自动化。<br>
+这些增强项不是没价值，而是更适合在你已经有稳定使用模式之后再做，否则很容易前期投入过高、后期维护跟不上。</p>
+<hr>
+<h2 id="几个最容易踩坑的地方">几个最容易踩坑的地方</h2>
+<p>有几个细节特别值得单独说，因为它们不是“理论上重要”，而是“实战里真的会踩”。</p>
+<h3 id="1-不要用-chattr-i-锁死核心配置">1. 不要用 <code>chattr +i</code> 锁死核心配置</h3>
+<p>研究内容里明确提到，不建议对核心配置使用 <code>chattr +i</code>。<br>
+原因是 gateway 在运行时需要读写 <code>paired.json</code>，如果你直接把文件锁死，WebSocket 握手可能失败，最终导致服务不可用。<br>
+更稳妥的替代方案是：<code>chmod 600</code> 加哈希基线，而不是追求极端锁定。</p>
+<h3 id="2-cron-的-timeout-不要设置太低">2. Cron 的 timeout 不要设置太低</h3>
+<p>如果任务跑在 isolated session 里，冷启动本身就需要时间。<br>
+研究内容里给出的经验值是 timeout 至少 300 秒，否则像 120 秒这种配置有明显超时风险。</p>
+<h3 id="3-to-要用-chatid不要用用户名">3. <code>--to</code> 要用 chatId，不要用用户名</h3>
+<p>这是一个很容易忽视的细节。<br>
+因为 isolated Agent 无法正确解析用户名，所以通知目标需要直接写 chatId，否则推送会失败。</p>
+<h3 id="4-推送失败不代表巡检失败">4. 推送失败不代表巡检失败</h3>
+<p>巡检通知通常依赖外部 API，偶发 502 或 503 并不罕见。<br>
+研究内容里提到，报告本身会保存在本地目录中，也可以通过历史运行记录回查，因此推送失败不应该被误判为巡检本身没有执行。</p>
+<hr>
+<h2 id="结尾">结尾</h2>
+<p>OpenClaw 的安全建设，最怕的不是“少做了一项配置”，而是“把方案设计得过于理想化，最后没人真正长期执行”。<br>
+如果把目标设定为“足够安全，同时保持日常零摩擦”，那么更合理的路径就不是一步到位，而是先补基础防护，再补审计与灾备，再引入自动巡检，最后根据 Agent 角色做差异化增强。</p>
+<p>换句话说，真正有效的安全实践，不是最复杂的那一套，而是那套你愿意长期维护、团队也愿意长期遵守的方案。<br>
+对 OpenClaw 来说，这种“安全性与可用性之间的平衡”，可能比任何单点配置都更重要。</p>
+<hr>
+<h2 id="参考">参考</h2>
+<ul>
+<li><a href="https://docs.openclaw.ai/">OpenClaw 官方文档</a></li>
+<li><a href="https://github.com/slowmist/openclaw-security-practice-guide">SlowMist OpenClaw 安全实践指南</a></li>
+<li><a href="https://docs.openclaw.ai/channels/discord">OpenClaw Discord 社区</a></li>
+</ul>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/bie-rang-ai-xuan-ze-xing-shi-cong-openclaw-ji-yi-ren-ge-wen-jian-de-gong-cheng-hua-chong-gou-zhi-nan/">
+              <h3 class="post-title">
+                下一篇：别让 AI “选择性失聪”：OpenClaw 记忆人格文件的工程化重构指南
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>

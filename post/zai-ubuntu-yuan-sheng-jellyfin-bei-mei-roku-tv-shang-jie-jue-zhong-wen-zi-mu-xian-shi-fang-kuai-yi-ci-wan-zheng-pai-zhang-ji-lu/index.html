@@ -1,0 +1,345 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>在 Ubuntu 原生 Jellyfin + 北美 Roku TV 上解决中文字幕显示方块：一次完整排障记录 | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1781550558156">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1781550558156" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://image.roku.com/developer_channels/prod/a718731aac02874aa9718b66c1654da7a8faba413e088e032ad10d2568621f55.png')">
+            </div>
+          
+          <h2 class="post-title">在 Ubuntu 原生 Jellyfin + 北美 Roku TV 上解决中文字幕显示方块：一次完整排障记录</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2026-06-07</span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>本文一方面给自己做个复盘，避免以后重复踩坑；另一方面也给遇到同类问题的人一个更清晰的排障路径。文中会把“已经实测确认的结论”和“根据官方/社区资料推导出的判断”分开写清楚，尽量避免把经验结论写成绝对事实。</p>
+<!-- more -->
+<p>这篇文章记录了一次比较典型、也比较绕的排障过程：Jellyfin Server 跑在 Ubuntu 上，客户端是北美购买的 Roku TV，视频可以正常播放，但一旦加载中文 SRT 字幕，就会显示成方块。最终，这个问题已经<strong>基本解决</strong>：可以稳定在 Roku TV 上正确显示中文字幕；但现阶段<strong>仍不能完全依赖 Roku Jellyfin 客户端直接加载中文 SRT 来显示</strong>，更稳定的方案仍然是让服务端参与转码并烧录字幕。</p>
+<h2 id="环境与现象">环境与现象</h2>
+<p>本文对应的环境如下：</p>
+<ul>
+<li>Jellyfin Server：10.11.10（Ubuntu 原生安装）</li>
+<li>Jellyfin for Roku：3.20.0</li>
+<li>终端设备：北美购买的 Roku TV</li>
+<li>字幕类型：外挂中文 SRT</li>
+</ul>
+<p>最初的现象非常明确：</p>
+<ul>
+<li>视频本身播放正常。</li>
+<li>加载中文 SRT 后，字幕显示为方块。</li>
+<li>Jellyfin Web 端、或服务端参与渲染/烧录时，中文可以正常显示。</li>
+<li>只有 Roku Jellyfin 客户端在“自己直接显示中文字幕”这条链路上表现异常。</li>
+</ul>
+<p>这意味着问题并不在视频文件损坏，也不太像是 SRT 内容本身有问题，更像是 <strong>Roku 端直接渲染中文文本字幕时，拿不到可用的中文字形资源</strong>。</p>
+<h2 id="先说最终结论">先说最终结论</h2>
+<p>如果只想先拿到可用方案，而不想看排障细节，可以直接看这部分。</p>
+<h3 id="已验证可用的方案">已验证可用的方案</h3>
+<p>这次最终跑通的方案是：</p>
+<ol>
+<li>Jellyfin 服务端开启转码相关能力。</li>
+<li>在 Jellyfin 服务端启用备用字体，并把路径指向<strong>字体目录</strong>，不是单个字体文件。</li>
+<li>使用 <code>.woff</code> 格式的中文字体文件；这次实际跑通使用的是此前在 Windows 环境中验证过的 <code>.woff</code> 字体，并直接复制到 Ubuntu 上继续使用。这个结论是<strong>个人实测经验</strong>，不是 Jellyfin 官方对所有字体格式的统一结论。</li>
+<li>Roku 端在 Settings 中开启<strong>全局</strong> <code>Force Transcode</code>；单条视频的 <code>Force Transcode</code> 在这次环境里不稳定，未能可靠生效。</li>
+<li>播放视频后，在当前视频的字幕设置里关闭 Roku 端额外那层字幕显示，只保留服务端已经烧录进视频的中文字幕，避免双层字幕叠加。</li>
+</ol>
+<p>按照这套方式，北美 Roku TV 上的中文字幕已经可以正确显示，至少达到了“稳定可看片”的程度。</p>
+<h3 id="仍然没解决的部分">仍然没解决的部分</h3>
+<p>虽然最终能正确显示中文，但当前仍然<strong>不能完全依赖 Roku Jellyfin 客户端自己去直接显示外挂中文 SRT</strong>。 在这次环境下，关闭强制转码、关闭 <code>custom subtitles</code>、只保留单独外挂中文 SRT，依然会出现中文方块，这说明客户端直显中文这条路径并不可靠。</p>
+<p>换句话说，现阶段更像是：</p>
+<ul>
+<li><strong>服务端烧录中文字幕</strong>：可用。</li>
+<li><strong>Roku Jellyfin 客户端直接显示中文 SRT</strong>：不可靠，至少在本文这套环境中不可依赖。</li>
+</ul>
+<h2 id="第一个坑不要把开启转码误以为是已经在转码">第一个坑：不要把“开启转码”误以为是“已经在转码”</h2>
+<p>一开始很容易犯的一个错误，是看到日志里出现下面这种信息，就以为当前播放已经走了转码：</p>
+<pre><code class="language-text">EnablePlaybackRemuxing: True
+EnableVideoPlaybackTranscoding: True
+EnableAudioPlaybackTranscoding: True
+</code></pre>
+<p>但这类日志真正表示的是：当前用户<strong>有权限</strong>进行 remux / 视频转码 / 音频转码，而不是“这一条播放会话已经发生了转码”。Jellyfin 官方对播放模型的说明很明确：实际是 Direct Play、Direct Stream 还是 Transcode，要由客户端能力、容器、音视频编码和字幕兼容性共同决定。</p>
+<p>这一步非常关键，因为如果会话根本没走到服务端字幕渲染，那么你在 Ubuntu 上配置备用字体再正确，也不会对 Roku 直显字幕产生作用。</p>
+<h2 id="第二个坑备用字体路径要指向目录">第二个坑：备用字体路径要指向目录</h2>
+<p>另一个容易踩的坑，是把 Jellyfin 的“备用字体”直接指向某个具体字体文件，例如：</p>
+<pre><code class="language-text">/opt/jellyfin/roku-fonts/NotoSansCJKsc-Medium.woff
+</code></pre>
+<p>这次排障里，更合理、也最终采用的方式，是把备用字体路径指向<strong>字体目录</strong>，例如：</p>
+<pre><code class="language-text">/opt/jellyfin/roku-fonts
+</code></pre>
+<p>社区文章和使用经验里，普遍都是按“字体所在目录”来配置，然后由 Jellyfin 在这个目录中查找可用字体。 这一点在 Linux 环境里尤其值得注意，因为很多人直觉上会把路径写成某一个文件，结果导致链路没打通。</p>
+<h2 id="第三个坑这次跑通的是-woff不是任意字体格式都行">第三个坑：这次跑通的是 WOFF，不是“任意字体格式都行”</h2>
+<p>这里必须把话说严谨。</p>
+<p>这次最终跑通的中文显示方案，使用的是此前在 Windows 环境里已经验证过的 <code>.woff</code> 字体文件，复制到 Ubuntu 后继续生效。 但这并不等于已经证明“只有 <code>.woff</code> 能用、<code>.ttf/.otf</code> 一定不行”，因为这次并没有对其它格式做系统化对照测试。</p>
+<p>因此，博客里更准确的表述应该是：</p>
+<ul>
+<li><strong>本次实测可用的是 <code>.woff</code> 中文字体。</strong></li>
+<li><strong>没有进一步验证 <code>.ttf/.otf</code> 在本文环境中是否也能成功。</strong></li>
+<li><strong>如果目标是先尽快复现可用方案，优先复用已经验证过的 <code>.woff</code> 是最稳妥的。</strong></li>
+</ul>
+<h2 id="第四个坑roku-单条视频的-force-transcode-不一定可靠">第四个坑：Roku 单条视频的 Force Transcode 不一定可靠</h2>
+<p>Jellyfin 官方在 Roku 3.0.0 的发布说明里提到，可以在单个条目的详情页里开启 <code>Force Transcoding</code>，也可以在用户设置中启用全局强制转码。 从功能设计看，单条视频强制转码本来应该是更方便、更细粒度的开关。</p>
+<p>但在这次实测环境里，<strong>单条视频的 <code>Force Transcode</code> 并没有稳定生效</strong>；只有进入 Settings，把全局 <code>Force Transcode</code> 打开后，中文字幕才真正开始正常显示。 相关 issue 里也有人反馈过类似现象：开启 <code>Force Transcoding</code> 后，客户端行为并不总是完全符合预期。</p>
+<p>所以就这次环境来说，更稳妥的做法是：<strong>不要依赖单视频开关，直接用全局 Force Transcode。</strong></p>
+<h2 id="第五个坑会出现双层字幕">第五个坑：会出现“双层字幕”</h2>
+<p>当全局强制转码终于生效后，新的问题又出现了：屏幕上会同时看到两层字幕。</p>
+<ul>
+<li>底层是正确显示的中文，说明服务端已经把字幕烧录进视频了。</li>
+<li>上层又覆盖了一层方块字幕，说明 Roku 客户端还在把同一条 SRT 当作独立字幕再次渲染。</li>
+</ul>
+<p>这一步其实非常有代表性，因为它说明链路已经从“完全没用到服务端字体”变成了“服务端和客户端同时都在处理字幕”。</p>
+<p>最终的解决办法并不复杂：</p>
+<ul>
+<li>保留全局 <code>Force Transcode</code>；</li>
+<li>进入当前视频播放时的字幕设置；</li>
+<li>把 Roku 端额外加载的字幕关闭；</li>
+<li>只保留服务端烧录进去的那一层字幕。</li>
+</ul>
+<p>这样处理后，叠加的异常方块字幕就会消失，只剩下服务端烧录的正常中文字幕。</p>
+<h2 id="这次真正定位出的核心原理">这次真正定位出的核心原理</h2>
+<p>排到最后，其实整个问题的关键逻辑已经很清楚了。</p>
+<h3 id="1-roku-端直接显示中文字幕不依赖-jellyfin-服务端备用字体">1. Roku 端直接显示中文字幕，不依赖 Jellyfin 服务端备用字体</h3>
+<p>Jellyfin 官方对播放模型的说明是：Direct Play 的目标就是客户端自己处理兼容的音视频和字幕；只有在不兼容时，才由服务端介入进行 Direct Stream 或转码烧录。 这意味着，当 Roku Jellyfin 客户端在<strong>本地直接显示外挂 SRT</strong> 时，主要依赖的是 Roku 侧这条字幕渲染链，而不是 Ubuntu 服务器上的字体目录。</p>
+<p>因此，Jellyfin 服务端备用字体真正起作用的场景，是<strong>服务端渲染/烧录字幕</strong>，而不是 Roku 本地直接渲染外挂 SRT。</p>
+<h3 id="2-custom-subtitles-说明-roku-客户端确实做过-cjk-适配但这条链路并不稳定">2. <code>custom subtitles</code> 说明 Roku 客户端确实做过 CJK 适配，但这条链路并不稳定</h3>
+<p>这一点不能简单粗暴地理解成“Roku 完全不支持中文”。</p>
+<p>Jellyfin Roku 的历史发布说明里明确提到：</p>
+<ul>
+<li>1.6.4 加入了 “Phase 1 CJK subtitle support (External files only)”。</li>
+<li>2.0.0 又提到 “Custom subtitle support (required for CJK support) expanded”。</li>
+</ul>
+<p>这说明 Jellyfin Roku 客户端确实尝试过针对 CJK 字幕做适配。 也正因为如此，<code>custom subtitles</code> 这个选项并不是摆设，它本来就是为了增强这条字幕显示链。</p>
+<p>但问题在于，社区 issue 同样表明，这条链路并不是“开了就一定成功”，而是存在兼容性限制和实现层面的 bug。 在本文这套环境里，单外挂中文 SRT + 关闭转码 + 开/关 <code>custom subtitles</code> 都无法稳定正常显示中文，因此只能得出一个更谨慎但更贴近实测的结论：<strong>Roku Jellyfin 客户端当前对中文直显的支持存在限制，至少在北美 Roku TV 上并不可靠。</strong></p>
+<h3 id="3-普通用户没有现实可行的方式去给-roku-tv-安装中文字体包">3. 普通用户没有现实可行的方式去“给 Roku TV 安装中文字体包”</h3>
+<p>这也是这次排障最后不得不接受的现实。</p>
+<p>Roku 开发文档说明，CJK 字体的常见做法是由应用在运行时动态下载并存储到 <code>cachefs/tmp</code>，再由应用自己使用；这属于客户端应用层能力，而不是普通用户能在电视系统设置里完成的事情。 也就是说，<strong>普通用户并不能像在 Android TV 或 Linux 上那样，直接往 Roku TV 系统层塞一套中文字体并让官方 Jellyfin App 自动受益。</strong></p>
+<p>因此，用户真正能控制的只有两部分：</p>
+<ul>
+<li>Jellyfin 服务端的字体与转码设置；</li>
+<li>Roku Jellyfin 客户端已有的几个开关，例如 <code>custom subtitles</code> 与 <code>Force Transcode</code>。</li>
+</ul>
+<h2 id="中文元数据-nfo-中文显示的问题">中文元数据 / NFO 中文显示的问题</h2>
+<p>这里还有一个非常重要、但经常被忽视的问题：<strong>不仅字幕，Roku Jellyfin 客户端界面本身的中文也可能显示成方块。</strong></p>
+<p>Jellyfin 社区里有过“Chinese library names are displayed as square”的 issue，说明中文库名、中文文本元数据本身就可能出现方块显示的问题。 这类问题本质上和字幕问题很像：都是客户端需要渲染中文字符，但当前显示链拿不到合适的中文字形资源。</p>
+<p>因此，如果 NFO、媒体标题、分类名称或其它元数据里包含中文，<strong>在 Roku Jellyfin 客户端界面中同样可能无法正常显示中文</strong>。 这一点和字幕问题属于同一类限制，只不过一个发生在播放界面，一个发生在应用界面。</p>
+<p>需要注意的是，这里不能把结论写得太绝对。更严谨的说法应该是：</p>
+<ul>
+<li><strong>Roku Jellyfin 客户端存在中文界面文本显示为方块的社区案例。</strong></li>
+<li><strong>结合本文的实际测试结果，可以合理推测：如果 NFO/元数据大量使用中文，Roku 端界面同样可能出现方块。</strong></li>
+<li><strong>这说明问题不仅是“字幕显示不全”，而是当前客户端整体的 CJK 文本渲染能力有限。</strong></li>
+</ul>
+<h2 id="一套更实用的最终建议">一套更实用的最终建议</h2>
+<p>如果目标不是继续研究原理，而是以后稳定看片，那么更实用的建议是这样的：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>建议做法</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>使用 Roku TV 看中文内容</td>
+<td>开全局 <code>Force Transcode</code>，服务端烧录中文字幕</td>
+<td>已被本文环境实测验证可用。</td>
+</tr>
+<tr>
+<td>播放后出现两层字幕</td>
+<td>在当前视频里关闭 Roku 端额外字幕显示</td>
+<td>避免客户端再叠加一层方块字幕。</td>
+</tr>
+<tr>
+<td>Jellyfin 服务端字体配置</td>
+<td>备用字体指向字体目录，优先复用已验证可用的 <code>.woff</code> 中文字体</td>
+<td>这是本文最终跑通的配置方式。</td>
+</tr>
+<tr>
+<td>想让 Roku 直接显示外挂中文 SRT</td>
+<td>可以尝试，但不要把它当成可靠方案</td>
+<td>本文环境下这条路径不稳定。</td>
+</tr>
+<tr>
+<td>NFO / 界面元数据大量使用中文</td>
+<td>预期 Roku 客户端可能仍显示方块</td>
+<td>已有中文文本显示为方块的社区案例。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="这次排障最大的经验">这次排障最大的经验</h2>
+<p>回头看，这次排障最浪费时间的地方，并不是“没找到开关”，而是<strong>一开始没有把“客户端渲染”和“服务端渲染”这两条链路分开理解</strong>。</p>
+<p>一旦把这件事想清楚，很多现象都会变得非常合理：</p>
+<ul>
+<li>服务端备用字体为什么在某些情况下完全没效果，因为那时字幕根本没有经过服务端渲染。</li>
+<li>为什么强制转码后中文突然正常，因为这时真正走到了服务端烧录字幕。</li>
+<li>为什么又会冒出第二层方块字幕，因为客户端还在重复渲染同一条字幕。</li>
+<li>为什么不仅字幕，中文元数据也可能出问题，因为 Roku 客户端界面本身对中文文本渲染也有限制。</li>
+</ul>
+<h2 id="结语">结语</h2>
+<p>到目前为止，这个问题可以说是“工程上已经解决”，但“产品体验上仍不完美”。北美 Roku TV 上的 Jellyfin 已经可以通过服务端烧录的方式正确显示中文字幕，但还不能把“客户端自己直接显示中文 SRT”当成稳定方案来依赖。</p>
+<p>如果后续 Jellyfin Roku 客户端继续完善 CJK 字幕链路，或者对中文界面文本支持更完整，那么这套方案未来还有继续简化的可能。 但至少在 Jellyfin Server 10.11.10 + Roku Client 3.20.0 + 北美 Roku TV 这套环境里，当前最稳的现实方案仍然是：<strong>服务端准备好字体，Roku 端开启全局强制转码，并关闭重复叠加的客户端字幕。</strong></p>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/openclaw-an-quan-shi-jian-zai-an-quan-yu-ke-yong-xing-zhi-jian-zhao-dao-ping-heng/">
+              <h3 class="post-title">
+                下一篇：OpenClaw 安全实践：在安全与可用性之间找到平衡
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>

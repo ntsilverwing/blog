@@ -1,0 +1,1723 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://ntsilverwing.github.io/blog/</id>
+    <title>宇宙中的粒子</title>
+    <updated>2026-06-15T19:10:14.843Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://ntsilverwing.github.io/blog/"/>
+    <link rel="self" href="https://ntsilverwing.github.io/blog/atom.xml"/>
+    <subtitle>随想、碎念、燧知</subtitle>
+    <logo>https://ntsilverwing.github.io/blog/images/avatar.png</logo>
+    <icon>https://ntsilverwing.github.io/blog/favicon.ico</icon>
+    <rights>All rights reserved 2026, 宇宙中的粒子</rights>
+    <entry>
+        <title type="html"><![CDATA[在 Ubuntu 原生 Jellyfin + 北美 Roku TV 上解决中文字幕显示方块：一次完整排障记录]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/zai-ubuntu-yuan-sheng-jellyfin-bei-mei-roku-tv-shang-jie-jue-zhong-wen-zi-mu-xian-shi-fang-kuai-yi-ci-wan-zheng-pai-zhang-ji-lu/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/zai-ubuntu-yuan-sheng-jellyfin-bei-mei-roku-tv-shang-jie-jue-zhong-wen-zi-mu-xian-shi-fang-kuai-yi-ci-wan-zheng-pai-zhang-ji-lu/">
+        </link>
+        <updated>2026-06-07T16:59:50.000Z</updated>
+        <summary type="html"><![CDATA[<p>本文一方面给自己做个复盘，避免以后重复踩坑；另一方面也给遇到同类问题的人一个更清晰的排障路径。文中会把“已经实测确认的结论”和“根据官方/社区资料推导出的判断”分开写清楚，尽量避免把经验结论写成绝对事实。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>本文一方面给自己做个复盘，避免以后重复踩坑；另一方面也给遇到同类问题的人一个更清晰的排障路径。文中会把“已经实测确认的结论”和“根据官方/社区资料推导出的判断”分开写清楚，尽量避免把经验结论写成绝对事实。</p>
+<!-- more -->
+<p>这篇文章记录了一次比较典型、也比较绕的排障过程：Jellyfin Server 跑在 Ubuntu 上，客户端是北美购买的 Roku TV，视频可以正常播放，但一旦加载中文 SRT 字幕，就会显示成方块。最终，这个问题已经<strong>基本解决</strong>：可以稳定在 Roku TV 上正确显示中文字幕；但现阶段<strong>仍不能完全依赖 Roku Jellyfin 客户端直接加载中文 SRT 来显示</strong>，更稳定的方案仍然是让服务端参与转码并烧录字幕。</p>
+<h2 id="环境与现象">环境与现象</h2>
+<p>本文对应的环境如下：</p>
+<ul>
+<li>Jellyfin Server：10.11.10（Ubuntu 原生安装）</li>
+<li>Jellyfin for Roku：3.20.0</li>
+<li>终端设备：北美购买的 Roku TV</li>
+<li>字幕类型：外挂中文 SRT</li>
+</ul>
+<p>最初的现象非常明确：</p>
+<ul>
+<li>视频本身播放正常。</li>
+<li>加载中文 SRT 后，字幕显示为方块。</li>
+<li>Jellyfin Web 端、或服务端参与渲染/烧录时，中文可以正常显示。</li>
+<li>只有 Roku Jellyfin 客户端在“自己直接显示中文字幕”这条链路上表现异常。</li>
+</ul>
+<p>这意味着问题并不在视频文件损坏，也不太像是 SRT 内容本身有问题，更像是 <strong>Roku 端直接渲染中文文本字幕时，拿不到可用的中文字形资源</strong>。</p>
+<h2 id="先说最终结论">先说最终结论</h2>
+<p>如果只想先拿到可用方案，而不想看排障细节，可以直接看这部分。</p>
+<h3 id="已验证可用的方案">已验证可用的方案</h3>
+<p>这次最终跑通的方案是：</p>
+<ol>
+<li>Jellyfin 服务端开启转码相关能力。</li>
+<li>在 Jellyfin 服务端启用备用字体，并把路径指向<strong>字体目录</strong>，不是单个字体文件。</li>
+<li>使用 <code>.woff</code> 格式的中文字体文件；这次实际跑通使用的是此前在 Windows 环境中验证过的 <code>.woff</code> 字体，并直接复制到 Ubuntu 上继续使用。这个结论是<strong>个人实测经验</strong>，不是 Jellyfin 官方对所有字体格式的统一结论。</li>
+<li>Roku 端在 Settings 中开启<strong>全局</strong> <code>Force Transcode</code>；单条视频的 <code>Force Transcode</code> 在这次环境里不稳定，未能可靠生效。</li>
+<li>播放视频后，在当前视频的字幕设置里关闭 Roku 端额外那层字幕显示，只保留服务端已经烧录进视频的中文字幕，避免双层字幕叠加。</li>
+</ol>
+<p>按照这套方式，北美 Roku TV 上的中文字幕已经可以正确显示，至少达到了“稳定可看片”的程度。</p>
+<h3 id="仍然没解决的部分">仍然没解决的部分</h3>
+<p>虽然最终能正确显示中文，但当前仍然<strong>不能完全依赖 Roku Jellyfin 客户端自己去直接显示外挂中文 SRT</strong>。 在这次环境下，关闭强制转码、关闭 <code>custom subtitles</code>、只保留单独外挂中文 SRT，依然会出现中文方块，这说明客户端直显中文这条路径并不可靠。</p>
+<p>换句话说，现阶段更像是：</p>
+<ul>
+<li><strong>服务端烧录中文字幕</strong>：可用。</li>
+<li><strong>Roku Jellyfin 客户端直接显示中文 SRT</strong>：不可靠，至少在本文这套环境中不可依赖。</li>
+</ul>
+<h2 id="第一个坑不要把开启转码误以为是已经在转码">第一个坑：不要把“开启转码”误以为是“已经在转码”</h2>
+<p>一开始很容易犯的一个错误，是看到日志里出现下面这种信息，就以为当前播放已经走了转码：</p>
+<pre><code class="language-text">EnablePlaybackRemuxing: True
+EnableVideoPlaybackTranscoding: True
+EnableAudioPlaybackTranscoding: True
+</code></pre>
+<p>但这类日志真正表示的是：当前用户<strong>有权限</strong>进行 remux / 视频转码 / 音频转码，而不是“这一条播放会话已经发生了转码”。Jellyfin 官方对播放模型的说明很明确：实际是 Direct Play、Direct Stream 还是 Transcode，要由客户端能力、容器、音视频编码和字幕兼容性共同决定。</p>
+<p>这一步非常关键，因为如果会话根本没走到服务端字幕渲染，那么你在 Ubuntu 上配置备用字体再正确，也不会对 Roku 直显字幕产生作用。</p>
+<h2 id="第二个坑备用字体路径要指向目录">第二个坑：备用字体路径要指向目录</h2>
+<p>另一个容易踩的坑，是把 Jellyfin 的“备用字体”直接指向某个具体字体文件，例如：</p>
+<pre><code class="language-text">/opt/jellyfin/roku-fonts/NotoSansCJKsc-Medium.woff
+</code></pre>
+<p>这次排障里，更合理、也最终采用的方式，是把备用字体路径指向<strong>字体目录</strong>，例如：</p>
+<pre><code class="language-text">/opt/jellyfin/roku-fonts
+</code></pre>
+<p>社区文章和使用经验里，普遍都是按“字体所在目录”来配置，然后由 Jellyfin 在这个目录中查找可用字体。 这一点在 Linux 环境里尤其值得注意，因为很多人直觉上会把路径写成某一个文件，结果导致链路没打通。</p>
+<h2 id="第三个坑这次跑通的是-woff不是任意字体格式都行">第三个坑：这次跑通的是 WOFF，不是“任意字体格式都行”</h2>
+<p>这里必须把话说严谨。</p>
+<p>这次最终跑通的中文显示方案，使用的是此前在 Windows 环境里已经验证过的 <code>.woff</code> 字体文件，复制到 Ubuntu 后继续生效。 但这并不等于已经证明“只有 <code>.woff</code> 能用、<code>.ttf/.otf</code> 一定不行”，因为这次并没有对其它格式做系统化对照测试。</p>
+<p>因此，博客里更准确的表述应该是：</p>
+<ul>
+<li><strong>本次实测可用的是 <code>.woff</code> 中文字体。</strong></li>
+<li><strong>没有进一步验证 <code>.ttf/.otf</code> 在本文环境中是否也能成功。</strong></li>
+<li><strong>如果目标是先尽快复现可用方案，优先复用已经验证过的 <code>.woff</code> 是最稳妥的。</strong></li>
+</ul>
+<h2 id="第四个坑roku-单条视频的-force-transcode-不一定可靠">第四个坑：Roku 单条视频的 Force Transcode 不一定可靠</h2>
+<p>Jellyfin 官方在 Roku 3.0.0 的发布说明里提到，可以在单个条目的详情页里开启 <code>Force Transcoding</code>，也可以在用户设置中启用全局强制转码。 从功能设计看，单条视频强制转码本来应该是更方便、更细粒度的开关。</p>
+<p>但在这次实测环境里，<strong>单条视频的 <code>Force Transcode</code> 并没有稳定生效</strong>；只有进入 Settings，把全局 <code>Force Transcode</code> 打开后，中文字幕才真正开始正常显示。 相关 issue 里也有人反馈过类似现象：开启 <code>Force Transcoding</code> 后，客户端行为并不总是完全符合预期。</p>
+<p>所以就这次环境来说，更稳妥的做法是：<strong>不要依赖单视频开关，直接用全局 Force Transcode。</strong></p>
+<h2 id="第五个坑会出现双层字幕">第五个坑：会出现“双层字幕”</h2>
+<p>当全局强制转码终于生效后，新的问题又出现了：屏幕上会同时看到两层字幕。</p>
+<ul>
+<li>底层是正确显示的中文，说明服务端已经把字幕烧录进视频了。</li>
+<li>上层又覆盖了一层方块字幕，说明 Roku 客户端还在把同一条 SRT 当作独立字幕再次渲染。</li>
+</ul>
+<p>这一步其实非常有代表性，因为它说明链路已经从“完全没用到服务端字体”变成了“服务端和客户端同时都在处理字幕”。</p>
+<p>最终的解决办法并不复杂：</p>
+<ul>
+<li>保留全局 <code>Force Transcode</code>；</li>
+<li>进入当前视频播放时的字幕设置；</li>
+<li>把 Roku 端额外加载的字幕关闭；</li>
+<li>只保留服务端烧录进去的那一层字幕。</li>
+</ul>
+<p>这样处理后，叠加的异常方块字幕就会消失，只剩下服务端烧录的正常中文字幕。</p>
+<h2 id="这次真正定位出的核心原理">这次真正定位出的核心原理</h2>
+<p>排到最后，其实整个问题的关键逻辑已经很清楚了。</p>
+<h3 id="1-roku-端直接显示中文字幕不依赖-jellyfin-服务端备用字体">1. Roku 端直接显示中文字幕，不依赖 Jellyfin 服务端备用字体</h3>
+<p>Jellyfin 官方对播放模型的说明是：Direct Play 的目标就是客户端自己处理兼容的音视频和字幕；只有在不兼容时，才由服务端介入进行 Direct Stream 或转码烧录。 这意味着，当 Roku Jellyfin 客户端在<strong>本地直接显示外挂 SRT</strong> 时，主要依赖的是 Roku 侧这条字幕渲染链，而不是 Ubuntu 服务器上的字体目录。</p>
+<p>因此，Jellyfin 服务端备用字体真正起作用的场景，是<strong>服务端渲染/烧录字幕</strong>，而不是 Roku 本地直接渲染外挂 SRT。</p>
+<h3 id="2-custom-subtitles-说明-roku-客户端确实做过-cjk-适配但这条链路并不稳定">2. <code>custom subtitles</code> 说明 Roku 客户端确实做过 CJK 适配，但这条链路并不稳定</h3>
+<p>这一点不能简单粗暴地理解成“Roku 完全不支持中文”。</p>
+<p>Jellyfin Roku 的历史发布说明里明确提到：</p>
+<ul>
+<li>1.6.4 加入了 “Phase 1 CJK subtitle support (External files only)”。</li>
+<li>2.0.0 又提到 “Custom subtitle support (required for CJK support) expanded”。</li>
+</ul>
+<p>这说明 Jellyfin Roku 客户端确实尝试过针对 CJK 字幕做适配。 也正因为如此，<code>custom subtitles</code> 这个选项并不是摆设，它本来就是为了增强这条字幕显示链。</p>
+<p>但问题在于，社区 issue 同样表明，这条链路并不是“开了就一定成功”，而是存在兼容性限制和实现层面的 bug。 在本文这套环境里，单外挂中文 SRT + 关闭转码 + 开/关 <code>custom subtitles</code> 都无法稳定正常显示中文，因此只能得出一个更谨慎但更贴近实测的结论：<strong>Roku Jellyfin 客户端当前对中文直显的支持存在限制，至少在北美 Roku TV 上并不可靠。</strong></p>
+<h3 id="3-普通用户没有现实可行的方式去给-roku-tv-安装中文字体包">3. 普通用户没有现实可行的方式去“给 Roku TV 安装中文字体包”</h3>
+<p>这也是这次排障最后不得不接受的现实。</p>
+<p>Roku 开发文档说明，CJK 字体的常见做法是由应用在运行时动态下载并存储到 <code>cachefs/tmp</code>，再由应用自己使用；这属于客户端应用层能力，而不是普通用户能在电视系统设置里完成的事情。 也就是说，<strong>普通用户并不能像在 Android TV 或 Linux 上那样，直接往 Roku TV 系统层塞一套中文字体并让官方 Jellyfin App 自动受益。</strong></p>
+<p>因此，用户真正能控制的只有两部分：</p>
+<ul>
+<li>Jellyfin 服务端的字体与转码设置；</li>
+<li>Roku Jellyfin 客户端已有的几个开关，例如 <code>custom subtitles</code> 与 <code>Force Transcode</code>。</li>
+</ul>
+<h2 id="中文元数据-nfo-中文显示的问题">中文元数据 / NFO 中文显示的问题</h2>
+<p>这里还有一个非常重要、但经常被忽视的问题：<strong>不仅字幕，Roku Jellyfin 客户端界面本身的中文也可能显示成方块。</strong></p>
+<p>Jellyfin 社区里有过“Chinese library names are displayed as square”的 issue，说明中文库名、中文文本元数据本身就可能出现方块显示的问题。 这类问题本质上和字幕问题很像：都是客户端需要渲染中文字符，但当前显示链拿不到合适的中文字形资源。</p>
+<p>因此，如果 NFO、媒体标题、分类名称或其它元数据里包含中文，<strong>在 Roku Jellyfin 客户端界面中同样可能无法正常显示中文</strong>。 这一点和字幕问题属于同一类限制，只不过一个发生在播放界面，一个发生在应用界面。</p>
+<p>需要注意的是，这里不能把结论写得太绝对。更严谨的说法应该是：</p>
+<ul>
+<li><strong>Roku Jellyfin 客户端存在中文界面文本显示为方块的社区案例。</strong></li>
+<li><strong>结合本文的实际测试结果，可以合理推测：如果 NFO/元数据大量使用中文，Roku 端界面同样可能出现方块。</strong></li>
+<li><strong>这说明问题不仅是“字幕显示不全”，而是当前客户端整体的 CJK 文本渲染能力有限。</strong></li>
+</ul>
+<h2 id="一套更实用的最终建议">一套更实用的最终建议</h2>
+<p>如果目标不是继续研究原理，而是以后稳定看片，那么更实用的建议是这样的：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>建议做法</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>使用 Roku TV 看中文内容</td>
+<td>开全局 <code>Force Transcode</code>，服务端烧录中文字幕</td>
+<td>已被本文环境实测验证可用。</td>
+</tr>
+<tr>
+<td>播放后出现两层字幕</td>
+<td>在当前视频里关闭 Roku 端额外字幕显示</td>
+<td>避免客户端再叠加一层方块字幕。</td>
+</tr>
+<tr>
+<td>Jellyfin 服务端字体配置</td>
+<td>备用字体指向字体目录，优先复用已验证可用的 <code>.woff</code> 中文字体</td>
+<td>这是本文最终跑通的配置方式。</td>
+</tr>
+<tr>
+<td>想让 Roku 直接显示外挂中文 SRT</td>
+<td>可以尝试，但不要把它当成可靠方案</td>
+<td>本文环境下这条路径不稳定。</td>
+</tr>
+<tr>
+<td>NFO / 界面元数据大量使用中文</td>
+<td>预期 Roku 客户端可能仍显示方块</td>
+<td>已有中文文本显示为方块的社区案例。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="这次排障最大的经验">这次排障最大的经验</h2>
+<p>回头看，这次排障最浪费时间的地方，并不是“没找到开关”，而是<strong>一开始没有把“客户端渲染”和“服务端渲染”这两条链路分开理解</strong>。</p>
+<p>一旦把这件事想清楚，很多现象都会变得非常合理：</p>
+<ul>
+<li>服务端备用字体为什么在某些情况下完全没效果，因为那时字幕根本没有经过服务端渲染。</li>
+<li>为什么强制转码后中文突然正常，因为这时真正走到了服务端烧录字幕。</li>
+<li>为什么又会冒出第二层方块字幕，因为客户端还在重复渲染同一条字幕。</li>
+<li>为什么不仅字幕，中文元数据也可能出问题，因为 Roku 客户端界面本身对中文文本渲染也有限制。</li>
+</ul>
+<h2 id="结语">结语</h2>
+<p>到目前为止，这个问题可以说是“工程上已经解决”，但“产品体验上仍不完美”。北美 Roku TV 上的 Jellyfin 已经可以通过服务端烧录的方式正确显示中文字幕，但还不能把“客户端自己直接显示中文 SRT”当成稳定方案来依赖。</p>
+<p>如果后续 Jellyfin Roku 客户端继续完善 CJK 字幕链路，或者对中文界面文本支持更完整，那么这套方案未来还有继续简化的可能。 但至少在 Jellyfin Server 10.11.10 + Roku Client 3.20.0 + 北美 Roku TV 这套环境里，当前最稳的现实方案仍然是：<strong>服务端准备好字体，Roku 端开启全局强制转码，并关闭重复叠加的客户端字幕。</strong></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[OpenClaw 安全实践：在安全与可用性之间找到平衡]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/openclaw-an-quan-shi-jian-zai-an-quan-yu-ke-yong-xing-zhi-jian-zhao-dao-ping-heng/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/openclaw-an-quan-shi-jian-zai-an-quan-yu-ke-yong-xing-zhi-jian-zhao-dao-ping-heng/">
+        </link>
+        <updated>2026-04-20T05:28:48.000Z</updated>
+        <summary type="html"><![CDATA[<p>OpenClaw 这类拥有高权限、可执行自动化任务的 AI Agent，天然就比普通工具更需要清晰的安全边界。<br>
+但真正的问题从来不是“要不要做安全”，而是“怎么做，才能既安全，又不把系统防到不好用”。<br>
+本文基于 OpenClaw Security Practice Guide安全实践的研究与落地分析，重新整理出一套更适合真实使用场景的实施框架：先做低成本、高收益的基础防护，再按阶段补齐审计、巡检和灾备，最后再按角色差异化加强多 Agent 环境下的策略配置。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>OpenClaw 这类拥有高权限、可执行自动化任务的 AI Agent，天然就比普通工具更需要清晰的安全边界。<br>
+但真正的问题从来不是“要不要做安全”，而是“怎么做，才能既安全，又不把系统防到不好用”。<br>
+本文基于 OpenClaw Security Practice Guide安全实践的研究与落地分析，重新整理出一套更适合真实使用场景的实施框架：先做低成本、高收益的基础防护，再按阶段补齐审计、巡检和灾备，最后再按角色差异化加强多 Agent 环境下的策略配置。</p>
+<!-- more -->
+<h2 id="目录">目录</h2>
+<ul>
+<li><a href="#%E4%B8%BA%E4%BB%80%E4%B9%88-openclaw-%E7%9A%84%E5%AE%89%E5%85%A8%E9%97%AE%E9%A2%98%E4%B8%8D%E8%83%BD%E5%8F%AA%E7%9C%8B%E6%96%87%E6%A1%A3">为什么 OpenClaw 的安全问题不能只看文档</a></li>
+<li><a href="#slowmist%E6%96%B9%E6%A1%88%E7%9A%84%E6%A0%B8%E5%BF%83%E6%A1%86%E6%9E%B6">slowmist方案的核心框架</a></li>
+<li><a href="#%E8%BF%99%E5%A5%97%E6%96%B9%E6%A1%88%E7%9C%9F%E6%AD%A3%E7%9A%84%E5%AE%9E%E6%96%BD%E6%88%90%E6%9C%AC">这套方案真正的实施成本</a></li>
+<li><a href="#%E5%93%AA%E4%BA%9B%E6%8E%AA%E6%96%BD%E5%BF%85%E9%A1%BB%E5%81%9A%E5%93%AA%E4%BA%9B%E4%B8%8D%E8%A6%81%E4%B8%80%E5%BC%80%E5%A7%8B%E5%85%A8%E5%81%9A">哪些措施必须做，哪些不要一开始全做</a></li>
+<li><a href="#%E5%A4%9A-agent-%E7%8E%AF%E5%A2%83%E4%B8%8B%E5%A6%82%E4%BD%95%E5%B7%AE%E5%BC%82%E5%8C%96%E9%83%A8%E7%BD%B2">多 Agent 环境下如何差异化部署</a></li>
+<li><a href="#%E4%B8%80%E5%A5%97%E6%9B%B4%E9%80%82%E5%90%88%E8%90%BD%E5%9C%B0%E7%9A%84%E5%88%86%E9%98%B6%E6%AE%B5%E6%96%B9%E6%A1%88">一套更适合落地的分阶段方案</a></li>
+<li><a href="#%E5%87%A0%E4%B8%AA%E6%9C%80%E5%AE%B9%E6%98%93%E8%B8%A9%E5%9D%91%E7%9A%84%E5%9C%B0%E6%96%B9">几个最容易踩坑的地方</a></li>
+<li><a href="#%E7%BB%93%E5%B0%BE">结尾</a></li>
+</ul>
+<hr>
+<h2 id="为什么-openclaw-的安全问题不能只看文档">为什么 OpenClaw 的安全问题不能只看文档</h2>
+<p>最近slowmist给出了一套相对完整的 OpenClaw 安全实践方案，整体方向没有问题，而且覆盖了从事前约束、事中控制到事后巡检与恢复的完整思路。<br>
+问题在于，如果直接把所有措施一次性全量部署，实际成本并不低，尤其是在日常频繁使用、需要持续装 Skill、或者本身就在跑多 Agent 的环境里，摩擦会迅速上升。<br>
+所以真正值得讨论的，不是“这份指南对不对”，而是“哪些该优先做，哪些应该延后，哪些甚至不适合照搬”。</p>
+<p>我更认同一种工程化思路：安全措施不该只追求完整，更要考虑使用体验、实施复杂度和长期执行的可持续性。<br>
+如果一套方案只能在刚部署那天看起来很安全，但之后没人愿意维护、没人愿意遵守，那它的实际效果往往会打折。<br>
+因此，OpenClaw 的安全建设更适合用“分层、分级、分阶段”的方式推进，而不是一口气把所有配置全堆上去。</p>
+<hr>
+<h2 id="slowmist方案的核心框架">slowmist方案的核心框架</h2>
+<p>从结构上看，这套安全实践大致可以分为三层：事前、事中和事后。<br>
+事前主要是行为层的红线与黄线规则，以及 Skill 安装前的安全审计；事中主要是权限收窄、关键配置哈希基线、操作日志和高危业务风控；事后则依赖每晚自动巡检与 OpenClaw 大脑级灾备。</p>
+<p>slowmist方案强调了几个核心原则：日常零摩擦、高危必确认、每晚有巡检，以及保持零信任心态。<br>
+这些原则本身非常合理，因为它们试图同时兼顾安全性和可用性，而不是只站在某一边。<br>
+在具体措施上，重点包括红线协议、黄线协议、核心配置 <code>600</code> 权限、SHA256 哈希基线、Skill 安装前审计、夜间自动巡检，以及同步到私有 Git 仓库的灾备机制。</p>
+<hr>
+<h2 id="这套方案真正的实施成本">这套方案真正的实施成本</h2>
+<p>从可用性角度看，大多数基础措施的冲击并不大。<br>
+红线和黄线协议主要影响高危操作，日常正常使用几乎无感；<code>chmod 600</code> 属于一次性设置，后续不会持续增加负担；哈希基线也是首次建立后自动校验，日常成本很低。<br>
+真正会显著增加使用摩擦的，是 Skill 审计流程，因为它会让每次安装新 Skill 都多出人工审查步骤。</p>
+<p>从体验上看，这套方案的收益和代价都很明确。<br>
+好处是高危操作更容易被拦住，配置变更更容易被发现，每晚的安全简报也会提供一种“系统仍在可控状态”的确定感；代价则是首次配置巡检脚本有门槛，黄线操作需要记录，而且 Skill 安装速度会变慢。<br>
+从工程复杂度看，最容易卡住人的地方并不是权限配置本身，而是巡检脚本、Cron 参数和灾备链路的打通。</p>
+<p>性能方面反而不是主要问题。<br>
+研究内容里提到，巡检脚本大致在 30 到 60 秒之间，且通常安排在凌晨执行；哈希校验基本可以忽略不计；Git 备份也多为秒级增量提交。<br>
+也就是说，这套方案真正需要平衡的是“复杂度与摩擦”，而不是“性能与资源占用”。</p>
+<hr>
+<h2 id="哪些措施必须做哪些不要一开始全做">哪些措施必须做，哪些不要一开始全做</h2>
+<p>如果目标是尽快把主要风险压下来，那么最值得优先落地的是一组“低成本、高收益”的措施。<br>
+包括把红线协议写入 <code>AGENTS.md</code>、收窄核心配置权限到 <code>600</code>、建立关键文件哈希基线、补上敏感数据外发限制，以及增加防隐性投毒规则。<br>
+这几项改动加起来时间不长，但能覆盖破坏性操作、配置篡改、凭证泄露和部分供应链攻击风险。</p>
+<p>第二层适合在基础防护稳定后再补上，包括黄线操作记录、分级版 Skill 审计、核心 5 项巡检脚本，以及 Git 灾备机制。<br>
+这些措施确实会增加一定配置成本，但它们解决的是“可追溯”“可恢复”“可自动检查”这三个长期运行非常关键的问题。</p>
+<p>反过来，有几件事并不适合一上来就强推。<br>
+例如一次性全量部署 13 项巡检，会明显拉高复杂度并增加出错概率；对所有 Skill 做无差别严格审计，会严重拖慢使用体验；而使用 <code>chattr +i</code> 锁死核心配置，甚至可能和运行时读写需求冲突，导致服务异常。</p>
+<hr>
+<h2 id="多-agent-环境下如何差异化部署">多 Agent 环境下如何差异化部署</h2>
+<p>如果你的环境里不只有一个 Agent，而是像 MainBrain、MAGI、CodeFarmer 这样分工协作的多 Agent 体系，那么安全策略就不应该一刀切。<br>
+红线/黄线协议、权限收窄、哈希基线、自动巡检和 Git 灾备，属于所有 Agent 都该有的底座能力，因为这些措施与角色无关。</p>
+<p>但某些增强措施只适合特定 Agent。<br>
+比如业务风控联动更适合负责决策的 MainBrain，DLP 扫描更适合处理敏感信息的 MainBrain 与 MAGI，而以执行代码为主的 CodeFarmer，则更适合从 <code>full</code> 模式收紧到 <code>exec allowlist</code>。<br>
+对 CodeFarmer 来说，真正有效的不是抽象地“加强安全”，而是明确限制命令范围，并尽量避免让它直接操作生产环境。</p>
+<hr>
+<h2 id="一套更适合落地的分阶段方案">一套更适合落地的分阶段方案</h2>
+<p>我更建议把实施过程拆成 P0、P1、P2、P3/P4 四个阶段推进。<br>
+这样做的好处是，每一阶段都能带来明确收益，同时不会在初期把配置复杂度推得过高。</p>
+<h3 id="p010-分钟先把基础防护补齐">P0：10 分钟，先把基础防护补齐</h3>
+<p>P0 只做最关键、最不容易出问题的内容：权限收窄、哈希基线、以及把红线/黄线和防投毒规则写进 <code>AGENTS.md</code>。</p>
+<pre><code class="language-bash">chmod 600 ~/.openclaw/openclaw.json
+chmod 600 ~/.openclaw/devices/paired.json
+sha256sum ~/.openclaw/openclaw.json &gt; ~/.openclaw/.config-baseline.sha256
+</code></pre>
+<p>这一步的价值很高，因为它几乎不影响日常使用，却能马上提升配置安全性和可观测性。</p>
+<h3 id="p11-小时补审计和灾备">P1：1 小时，补审计和灾备</h3>
+<p>第二阶段建议加入黄线操作记录、防投毒检查和 Git 灾备。<br>
+黄线操作可以统一记录到 <code>memory/YYYY-MM-DD.md</code>，格式包含时间、命令、原因和结果；Skill 安装前先执行 <code>clawhub inspect --files</code>，并审查所有文本文件，包括 <code>.md</code> 和 <code>.json</code>；同时建立私有 Git 仓库，并正确配置 <code>.gitignore</code>，避免把无关或敏感内容直接同步出去。</p>
+<p>这一阶段的目标不是“做完整”，而是先让系统具备最基本的审计能力和恢复能力。</p>
+<h3 id="p23-小时开始自动巡检">P2：3 小时，开始自动巡检</h3>
+<p>第三阶段再把自动巡检接起来，而且不建议一开始就追求 13 项全覆盖。<br>
+先做核心 5 项已经足够有价值，包括 OpenClaw 安全审计、进程与网络审计、敏感目录变更、配置基线校验，以及磁盘使用检查。</p>
+<p>巡检任务可以按下面这种方式注册：</p>
+<pre><code class="language-bash">openclaw cron add \
+  --name &quot;nightly-security-audit&quot; \
+  --description &quot;每晚安全巡检&quot; \
+  --cron &quot;0 3 * * *&quot; \
+  --tz &quot;America/Denver&quot; \
+  --session &quot;isolated&quot; \
+  --message &quot;Execute this command and output the result as-is: bash ~/.openclaw/workspace/scripts/nightly-security-audit.sh&quot; \
+  --announce \
+  --channel discord \
+  --to &lt;your-chat-id&gt; \
+  --timeout-seconds 300 \
+  --thinking off
+</code></pre>
+<p>这一步真正重要的不是“把 cron 跑起来”，而是把几个细节一次配对：正确时区、isolated session、可接收消息的 chatId，以及足够的超时时间。</p>
+<h3 id="p3-p4按需增强">P3 / P4：按需增强</h3>
+<p>当基础防护、审计、巡检和灾备都稳定后，再考虑继续扩展到 13 项巡检、增加 DLP 规则、接入业务风控，以及把 Skill 审计流程进一步自动化。<br>
+这些增强项不是没价值，而是更适合在你已经有稳定使用模式之后再做，否则很容易前期投入过高、后期维护跟不上。</p>
+<hr>
+<h2 id="几个最容易踩坑的地方">几个最容易踩坑的地方</h2>
+<p>有几个细节特别值得单独说，因为它们不是“理论上重要”，而是“实战里真的会踩”。</p>
+<h3 id="1-不要用-chattr-i-锁死核心配置">1. 不要用 <code>chattr +i</code> 锁死核心配置</h3>
+<p>研究内容里明确提到，不建议对核心配置使用 <code>chattr +i</code>。<br>
+原因是 gateway 在运行时需要读写 <code>paired.json</code>，如果你直接把文件锁死，WebSocket 握手可能失败，最终导致服务不可用。<br>
+更稳妥的替代方案是：<code>chmod 600</code> 加哈希基线，而不是追求极端锁定。</p>
+<h3 id="2-cron-的-timeout-不要设置太低">2. Cron 的 timeout 不要设置太低</h3>
+<p>如果任务跑在 isolated session 里，冷启动本身就需要时间。<br>
+研究内容里给出的经验值是 timeout 至少 300 秒，否则像 120 秒这种配置有明显超时风险。</p>
+<h3 id="3-to-要用-chatid不要用用户名">3. <code>--to</code> 要用 chatId，不要用用户名</h3>
+<p>这是一个很容易忽视的细节。<br>
+因为 isolated Agent 无法正确解析用户名，所以通知目标需要直接写 chatId，否则推送会失败。</p>
+<h3 id="4-推送失败不代表巡检失败">4. 推送失败不代表巡检失败</h3>
+<p>巡检通知通常依赖外部 API，偶发 502 或 503 并不罕见。<br>
+研究内容里提到，报告本身会保存在本地目录中，也可以通过历史运行记录回查，因此推送失败不应该被误判为巡检本身没有执行。</p>
+<hr>
+<h2 id="结尾">结尾</h2>
+<p>OpenClaw 的安全建设，最怕的不是“少做了一项配置”，而是“把方案设计得过于理想化，最后没人真正长期执行”。<br>
+如果把目标设定为“足够安全，同时保持日常零摩擦”，那么更合理的路径就不是一步到位，而是先补基础防护，再补审计与灾备，再引入自动巡检，最后根据 Agent 角色做差异化增强。</p>
+<p>换句话说，真正有效的安全实践，不是最复杂的那一套，而是那套你愿意长期维护、团队也愿意长期遵守的方案。<br>
+对 OpenClaw 来说，这种“安全性与可用性之间的平衡”，可能比任何单点配置都更重要。</p>
+<hr>
+<h2 id="参考">参考</h2>
+<ul>
+<li><a href="https://docs.openclaw.ai/">OpenClaw 官方文档</a></li>
+<li><a href="https://github.com/slowmist/openclaw-security-practice-guide">SlowMist OpenClaw 安全实践指南</a></li>
+<li><a href="https://docs.openclaw.ai/channels/discord">OpenClaw Discord 社区</a></li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[别让 AI “选择性失聪”：OpenClaw 记忆人格文件的工程化重构指南]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/bie-rang-ai-xuan-ze-xing-shi-cong-openclaw-ji-yi-ren-ge-wen-jian-de-gong-cheng-hua-chong-gou-zhi-nan/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/bie-rang-ai-xuan-ze-xing-shi-cong-openclaw-ji-yi-ren-ge-wen-jian-de-gong-cheng-hua-chong-gou-zhi-nan/">
+        </link>
+        <updated>2026-04-20T00:06:34.000Z</updated>
+        <summary type="html"><![CDATA[<p>事情起源于我要精简三个agent的人格文件，以节省token用量。我咨询了Gemini，结合官网和社区实践信息整理出了一个Prompt。我喂给GPT5.4，实际效果感觉还不错，于是梳理以下整个过程并附上prompt。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>事情起源于我要精简三个agent的人格文件，以节省token用量。我咨询了Gemini，结合官网和社区实践信息整理出了一个Prompt。我喂给GPT5.4，实际效果感觉还不错，于是梳理以下整个过程并附上prompt。</p>
+<!-- more -->
+<h2 id="01-前言从-vibe-coding-到工程化-agent">01. 前言：从 Vibe Coding 到工程化 Agent</h2>
+<p>在 Vibe Coding 的浪潮下，我们不再仅仅将 AI 视为聊天机器人，而是将其深度集成到工作流中，作为 <strong>OpenClaw</strong> 的核心驱动。然而，许多开发者发现 Agent 跑着跑着就“傻了”：指令不听、人设崩塌、逻辑混乱。</p>
+<p>这通常不是模型的问题，而是你的 <strong>人格文件（Bootstrap Files）</strong> 出了问题。本文将从底层逻辑出发，教你如何像管理工程项目一样，重构你的 AI 记忆系统。</p>
+<hr>
+<h2 id="02-物理硬限制20000-字符的死亡线">02. 物理硬限制：20,000 字符的“死亡线”</h2>
+<p>在 OpenClaw 的架构中，系统在启动时会加载 <code>AGENTS.md</code>、<code>SOUL.md</code> 等引导文件。</p>
+<ul>
+<li><strong>静默截断 (Silent Truncation)</strong>：根据官方实证，单个引导文件加载上限约为 <strong>20,000 字符</strong>。</li>
+<li><strong>物理切除风险</strong>：一旦超限，系统会采取“中间切除”策略——保留头尾，直接删掉中间内容。如果你的核心规则（如：安全红线）恰好在文件中间，它将在物理层面消失。</li>
+<li><strong>工程对策</strong>：建议单文件控制在 <strong>15,000 字符</strong> 以内，预留 5k 缓冲区。</li>
+</ul>
+<hr>
+<h2 id="03-权重原则防御迷失在中间">03. 权重原则：防御“迷失在中间”</h2>
+<p>LLM 并非对所有文字一视同仁。研究证明，模型对文本 <strong>头部</strong> 和 <strong>尾部</strong> 的注意力最强。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">位置</th>
+<th style="text-align:left">权重类型</th>
+<th style="text-align:left">建议内容</th>
+<th style="text-align:left">逻辑依据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>头部 (0%-20%)</strong></td>
+<td style="text-align:left"><strong>定义权</strong></td>
+<td style="text-align:left">核心人设、安全红线 (Red Lines)</td>
+<td style="text-align:left">决定 AI 处理信息的“初始滤镜”</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>中间 (20%-80%)</strong></td>
+<td style="text-align:left"><strong>弱化区</strong></td>
+<td style="text-align:left">次要细节、补充示例、长文说明</td>
+<td style="text-align:left">即使被遗忘或截断，也不影响核心逻辑</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>尾部 (80%-100%)</strong></td>
+<td style="text-align:left"><strong>执行权</strong></td>
+<td style="text-align:left">强制检索令、任务触发器</td>
+<td style="text-align:left">确保 AI “起跑”前最后一眼看的是操作规范</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>避坑指南</strong>：很多人提到的“近因效应”虽然让 AI 关注末尾，但在系统提示词中，**开头的“元指令”**具有定义全局的法律效力，不可偏废。</p>
+</blockquote>
+<hr>
+<h2 id="04-架构蓝图人格文件的五维占比">04. 架构蓝图：人格文件的五维占比</h2>
+<p>为了实现职责解耦，建议按照以下比例规划你的 OpenClaw 记忆系统：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">文件维度</th>
+<th style="text-align:left">建议占比</th>
+<th style="text-align:left">核心职能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>SOUL/Identity</strong></td>
+<td style="text-align:left"><strong>5%</strong></td>
+<td style="text-align:left">身份核心与语气。<strong>建议合并</strong>，避免人设分裂。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>USER</strong></td>
+<td style="text-align:left"><strong>10%</strong></td>
+<td style="text-align:left">用户个人偏好、特定技术栈习惯（如 PHP 8.3 / PSR-12）。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>AGENTS</strong></td>
+<td style="text-align:left"><strong>25%</strong></td>
+<td style="text-align:left"><strong>核心操作协议</strong>、开发规范、安全控制（核心权重）。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>TOOLS</strong></td>
+<td style="text-align:left"><strong>10%</strong></td>
+<td style="text-align:left">工具调用的限制与特定场景说明。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>MEMORY</strong></td>
+<td style="text-align:left"><strong>50%</strong></td>
+<td style="text-align:left">动态事实、项目进度、历史决策记录。</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="05-核心实战技巧">05. 核心实战技巧</h2>
+<h3 id="1-双语隔离策略">1. 双语隔离策略</h3>
+<ul>
+<li><strong>英文</strong>：用于代码注释标准、变量命名规则、技术规范（确保 AI 输出符合工业标准）。</li>
+<li><strong>中文</strong>：用于执行计划、反馈逻辑、业务背景解释（确保人类理解的直观性）。</li>
+</ul>
+<h3 id="2-强制检索令-memory-first">2. 强制检索令 (Memory-First)</h3>
+<p>在 <code>AGENTS.md</code> 的尾部必须注入逻辑锁死：</p>
+<blockquote>
+<p><code>[任何任务前] -&gt; 调用 memory_search 检索 MEMORY.md</code><br>
+避免 AI 基于过时的信息“瞎猜”。</p>
+</blockquote>
+<h3 id="3-极简-markdown-表达">3. 极简 Markdown 表达</h3>
+<p>剔除所有“请、建议、作为一个 AI”等废话。使用程序化逻辑：</p>
+<ul>
+<li><strong>错误示例</strong>：“请你尽量在写代码的时候注意不要修改 .env 文件。”</li>
+<li><strong>正确写法</strong>：<code>[Red Line] 禁止任何涉及修改或读取 .env 文件的操作。</code></li>
+</ul>
+<hr>
+<h2 id="06-终极工具openclaw-记忆架构优化-prompt-v40">06. 终极工具：OpenClaw 记忆架构优化 Prompt (V4.0)</h2>
+<p>你可以直接将以下 Prompt 发送给 LLM ，驱动其帮你完成重构：</p>
+<pre><code class="language-markdown"># OpenClaw 记忆架构优化专家指令 (V3.0)
+
+## 任务背景
+你现在是一名专门负责 **OpenClaw (Official Framework)** 架构优化的顶级专家。你的任务是审计并重构我提供的 **OpenClaw 全套人格文件**（包括但不限于 AGENTS, SOUL, USER, TOOLS, MEMORY 等）。你必须基于 L4 程序性记忆标准，确保整个系统职责清晰、无逻辑冲突且 Token 效率极高。
+
+## 架构硬约束
+1. **单文件限额：** 严禁超过 15,000 字符（防止 20k 字符的静默截断，保留 5k 缓冲区）。
+2. **位置敏感逻辑：** 核心规则必须置于文件头部（前 70%）或尾部（后 20%）。
+3. **全局容量配比建议：** - **SOUL/Identity (5%):** 核心人设与语调。
+    - **USER (10%):** 用户偏好、习惯与特定项目背景。
+    - **AGENTS (25%):** 核心行为逻辑、开发协议、安全红线。 (已根据反馈适度上调)
+    - **TOOLS (10%):** 工具使用限制。
+    - **MEMORY (50%):** 项目动态事实、长期记忆、技术决策记录。
+
+## 防幻觉与深度审计标准
+- **权威对齐：** 所有的优化逻辑必须符合 OpenClaw “先检索、后思考、再执行”的官方工作流。
+- **全局冲突审计：** 必须扫描【所有】上传文件。识别并指出文件间的冗余或逻辑矛盾。*注意：AGENTS.md 中的规则不应与 SOUL.md 中的人设冲突，更不应在 MEMORY.md 中存储本该属于 AGENTS 的通用规则。*
+- **宁缺毋滥：** 删除所有礼貌性废话、修饰词及“作为一个 AI”之类的声明。
+
+## 第一阶段：全局审计报告（请先执行）
+在重构前，请分析我上传的所有文件并输出：
+1. **文件分布地图：** 列出当前所有文件的字符数及占比。
+2. **逻辑冲突报告：** 明确指出哪些内容在不同文件中重复（例如 USER 里的偏好在 AGENTS 里又写了一遍）。
+3. **内容迁移建议：** 识别应从静态规则（AGENTS）迁移至动态事实（MEMORY）的具体段落，反之亦然。
+4. **清理方案：** 标出可直接剔除的无效 Token。
+
+## 第二阶段：重构标准（待我确认后执行）
+- **极简 Markdown：** 仅使用 H1/H2 + 列表，使用 `[条件] -&gt; [动作]` 的程序化表达。
+- **检索强制令：** 在 AGENTS 头部注入：*“在处理任何指令前，必须检索 MEMORY.md 以对齐最新的项目进度与上下文。”*
+- **双语策略：** 技术标准、变量名、代码注释用英文；执行计划、反馈与解释用中文。
+
+
+请在准备好后告知我，我将上传所有源文件，你将立即启动【第一阶段：全局审计报告】。
+</code></pre>
+<hr>
+<h2 id="07-实际应用">07. 实际应用</h2>
+<p>在实际应用中，Claude sonnet 4.6表现一般，GPT5.4还可以，推荐开启thinking后使用。<br>
+另外，我的是多agent，可以在提示词中提前声明以下信息：</p>
+<ul>
+<li>
+<ol>
+<li>有几个agent，分别是什么作用。</li>
+</ol>
+</li>
+<li>
+<ol start="2">
+<li>目前上传的哪个agent的文件。</li>
+</ol>
+</li>
+<li>
+<ol start="3">
+<li>需要注意几个agent间的联系，不要优化后切断了彼此联系。</li>
+</ol>
+</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Karpathy LLM Wiki 模式深度调研：从 RAG 到增量知识库]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/karpathy-llm-wiki-mo-shi-shen-du-diao-yan-cong-rag-dao-zeng-liang-zhi-shi-ku/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/karpathy-llm-wiki-mo-shi-shen-du-diao-yan-cong-rag-dao-zeng-liang-zhi-shi-ku/">
+        </link>
+        <updated>2026-04-19T03:27:21.000Z</updated>
+        <summary type="html"><![CDATA[<p>本文基于 Andrej Karpathy 的 GitHub Gist，深入探讨了一种创新的 LLM 知识库构建模式，并分析其在 OpenClaw 中的集成可行性。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>本文基于 Andrej Karpathy 的 GitHub Gist，深入探讨了一种创新的 LLM 知识库构建模式，并分析其在 OpenClaw 中的集成可行性。</p>
+<!-- more -->
+<h2 id="前言">前言</h2>
+<p>最近，AI 领域的知名研究者 Andrej Karpathy 分享了一个关于 LLM 知识库构建的 Gist，提出了一种与传统 RAG（检索增强生成）模式不同的思路：<strong>增量式、持久化的 Wiki 构建</strong>。</p>
+<p>这个模式的核心思想是：与其在每次查询时重新检索和拼凑信息，不如通过 LLM 增量构建和维护一个结构化的 Wiki，让知识被编译一次后持续积累和更新。</p>
+<p>为了深入了解这个模式的技术细节、优缺点以及在 OpenClaw 中的集成可行性，我们进行了深入的调研分析。</p>
+<hr>
+<h2 id="项目概述">项目概述</h2>
+<h3 id="核心理念">核心理念</h3>
+<p>Karpathy 的 Gist 描述了一种创新的 LLM 知识库构建模式，其核心思想可以概括为：</p>
+<ol>
+<li>
+<p><strong>与传统 RAG 的区别</strong>：传统 RAG 在每次查询时重新检索和拼凑信息，而此模式通过 LLM 增量构建和维护一个结构化的 Wiki，知识被编译一次后持续积累和更新</p>
+</li>
+<li>
+<p><strong>人机协作</strong>：人类负责提出问题和提供原始资料，LLM 负责所有繁琐的维护工作（总结、交叉引用、归档等）</p>
+</li>
+<li>
+<p><strong>复合效应</strong>：Wiki 随着每个新来源和每个问题的添加而不断丰富，形成知识复利效应</p>
+</li>
+</ol>
+<h3 id="为什么这个模式值得关注">为什么这个模式值得关注？</h3>
+<p>传统的 RAG 模式虽然强大，但存在一些固有的局限性：</p>
+<ul>
+<li><strong>重复检索</strong>：每次查询都需要重新检索和拼凑信息，效率低下</li>
+<li><strong>知识孤岛</strong>：不同查询之间缺乏知识共享，难以形成累积效应</li>
+<li><strong>维护成本高</strong>：需要持续维护检索索引和相关性模型</li>
+</ul>
+<p>而 Karpathy 提出的 Wiki 模式，通过增量构建和持续维护，试图解决这些问题，让知识库像真正的 Wiki 一样，随着使用不断丰富和完善。</p>
+<hr>
+<h2 id="技术架构分析">技术架构分析</h2>
+<h3 id="三层架构设计">三层架构设计</h3>
+<p>这个模式的核心是一个清晰的三层架构：</p>
+<h4 id="1-原始来源层raw-sources">1. 原始来源层（Raw Sources）</h4>
+<ul>
+<li><strong>作用</strong>：用户整理的原始文档集合（文章、论文、图片、数据文件）</li>
+<li><strong>特点</strong>：不可变，仅作为 LLM 读取的数据源</li>
+<li><strong>意义</strong>：作为知识的最终真相来源，确保知识的可追溯性</li>
+</ul>
+<h4 id="2-wiki-层">2. Wiki 层</h4>
+<ul>
+<li><strong>作用</strong>：LLM 生成的 Markdown 文件目录</li>
+<li><strong>内容</strong>：包含摘要页、实体页面、概念页面、对比分析和综合概述</li>
+<li><strong>特点</strong>：LLM 完全拥有此层，负责创建、更新和维护所有内容</li>
+<li><strong>意义</strong>：保持跨引用的一致性和实时性，形成知识网络</li>
+</ul>
+<h4 id="3-schema-层">3. Schema 层</h4>
+<ul>
+<li><strong>作用</strong>：配置文件（如 CLAUDE.md 或 AGENTS.md）</li>
+<li><strong>内容</strong>：定义 Wiki 结构、约定和工作流程</li>
+<li><strong>特点</strong>：人类与 LLM 共同演进此配置</li>
+<li><strong>意义</strong>：形成适合特定领域的最佳实践</li>
+</ul>
+<h3 id="核心工作流">核心工作流</h3>
+<p>这个模式定义了三个核心工作流，每个工作流都有明确的目标和流程：</p>
+<h4 id="ingest摄取流程">Ingest（摄取流程）</h4>
+<pre><code>1. 添加新来源到原始集合
+2. LLM 读取来源并与用户讨论关键要点
+3. 生成摘要页面
+4. 更新索引和相关条目页面
+5. 记录到日志中
+</code></pre>
+<p><strong>关键特点</strong>：</p>
+<ul>
+<li>单个来源可能影响 10-15 个 Wiki 页面</li>
+<li>支持单条处理（推荐，保持参与度）或批量处理</li>
+<li>强调人机协作，确保知识提取的准确性</li>
+</ul>
+<h4 id="query查询流程">Query（查询流程）</h4>
+<pre><code>1. 用户向 Wiki 提问
+2. LLM 搜索相关页面
+3. 读取并综合回答，附带引用
+4. 回答形式多样：Markdown 页面、对比表格、图表、幻灯片等
+5. 优质回答可归档回 Wiki，形成新的知识页面
+</code></pre>
+<p><strong>关键特点</strong>：</p>
+<ul>
+<li>支持多种回答形式，满足不同场景需求</li>
+<li>强调引用和可追溯性</li>
+<li><strong>关键洞察</strong>：优质回答可归档回 Wiki，形成新的知识页面，实现知识的自我增强</li>
+</ul>
+<h4 id="lint健康检查">Lint（健康检查）</h4>
+<p>定期检查 Wiki 健康状况：</p>
+<ul>
+<li>识别页面间的矛盾</li>
+<li>发现过时的声明</li>
+<li>查找孤立页面（无入站链接）</li>
+<li>发现缺少页面的重要概念</li>
+<li>识别缺失的交叉引用</li>
+<li>建议新的调查方向</li>
+</ul>
+<p><strong>关键特点</strong>：</p>
+<ul>
+<li>主动维护 Wiki 的健康和质量</li>
+<li>发现潜在的问题和改进空间</li>
+<li>支持持续优化和演进</li>
+</ul>
+<h3 id="导航辅助文件">导航辅助文件</h3>
+<p>为了方便 Wiki 的浏览和导航，这个模式还定义了两个重要的辅助文件：</p>
+<ol>
+<li><strong>index.md</strong>：内容导向的目录，包含所有页面的链接、摘要和元数据</li>
+<li><strong>log.md</strong>：按时间顺序的记录，可解析的格式便于追踪历史</li>
+</ol>
+<p>这两个文件为 Wiki 提供了结构化的导航和历史追踪能力。</p>
+<hr>
+<h2 id="优缺点评估">优缺点评估</h2>
+<h3 id="技术优势">技术优势</h3>
+<p>这个模式具有多个显著的技术优势：</p>
+<h4 id="1-知识累积性强">1. 知识累积性强</h4>
+<p>Wiki 持续丰富，不会重复造轮子。每次新的来源或查询都会为 Wiki 增加新的内容，形成知识的复利效应。</p>
+<h4 id="2-交叉引用完善">2. 交叉引用完善</h4>
+<p>LLM 维护所有链接，形成知识网络。不同页面之间的关联性得到自动维护，知识不再是孤立的。</p>
+<h4 id="3-矛盾检测">3. 矛盾检测</h4>
+<p>主动识别和标记信息冲突。当不同来源的信息存在矛盾时，系统能够自动发现并标记，帮助用户识别和解决冲突。</p>
+<h4 id="4-自动化程度高">4. 自动化程度高</h4>
+<p>减少人工维护负担。LLM 负责大部分繁琐的维护工作，人类只需要提供原始资料和提出问题。</p>
+<h4 id="5-灵活性强">5. 灵活性强</h4>
+<p>适用于个人、研究、商业等多种场景。无论是个人知识管理、深度研究、阅读笔记、商业分析还是团队协作，这个模式都能提供支持。</p>
+<h3 id="局限性与挑战">局限性与挑战</h3>
+<p>尽管这个模式有很多优势，但也存在一些局限性和挑战：</p>
+<h4 id="1-llm-幻觉风险">1. LLM 幻觉风险</h4>
+<p>需要人工监督确保准确性。LLM 可能会产生幻觉或错误的信息，需要人类进行监督和验证。</p>
+<h4 id="2-初始成本">2. 初始成本</h4>
+<p>需要投入时间建立合适的 Schema 和 workflow。在开始使用这个模式之前，需要投入时间设计和配置合适的 Schema 和工作流程。</p>
+<h4 id="3-扩展性限制">3. 扩展性限制</h4>
+<p>大规模知识库可能需要更复杂的基础设施。当知识库规模较大时，可能需要更复杂的基础设施来支持高效的检索和维护。</p>
+<h4 id="4-token-消耗">4. Token 消耗</h4>
+<p>频繁更新大量页面可能产生较高成本。每次更新 Wiki 页面都需要调用 LLM，可能产生较高的 Token 消耗和成本。</p>
+<h4 id="5-编辑冲突">5. 编辑冲突</h4>
+<p>多人协作时可能出现并发修改问题。当多人同时编辑 Wiki 时，可能出现编辑冲突，需要解决并发修改的问题。</p>
+<h3 id="适用场景">适用场景</h3>
+<p>这个模式适用于多种场景：</p>
+<ul>
+<li>✅ <strong>个人知识管理</strong>：健康追踪、心理学、自我提升</li>
+<li>✅ <strong>深度研究</strong>：数周或数月的主题研究</li>
+<li>✅ <strong>阅读笔记</strong>：书籍章节整理，角色、主题追踪</li>
+<li>✅ <strong>商业分析</strong>：竞品分析、尽职调查</li>
+<li>✅ <strong>团队协作</strong>：内部 Wiki 维护，会议记录整理</li>
+</ul>
+<hr>
+<h2 id="openclaw-集成可行性">OpenClaw 集成可行性</h2>
+<h3 id="高兼容性分析">高兼容性分析</h3>
+<p>经过深入分析，我们认为 OpenClaw 与这个模式具有很高的兼容性：</p>
+<h4 id="1-架构匹配度高">1. 架构匹配度高</h4>
+<ul>
+<li>OpenClaw 的工作空间设计天然支持三层架构</li>
+<li>工作空间目录可作为 Wiki 的根目录</li>
+<li>现有的文件管理工具（read/write/edit）完美适配</li>
+</ul>
+<h4 id="2-llm-工具集成">2. LLM 工具集成</h4>
+<ul>
+<li>OpenClaw 支持多种 LLM 代理（Claude Code、Codex、Pi 等）</li>
+<li>现有的 coding-agent 技能可直接用于实现 Ingest 工作流</li>
+<li>可开发专门的 wiki-maintainer 技能</li>
+</ul>
+<h4 id="3-文件系统操作">3. 文件系统操作</h4>
+<ul>
+<li>OpenClaw 的文件工具链完全支持 Markdown 文件的创建、读取和更新</li>
+<li>可实现自动化 Wiki 维护脚本</li>
+</ul>
+<h3 id="需要改造的方面">需要改造的方面</h3>
+<p>尽管兼容性很高，但仍然需要进行一些改造：</p>
+<h4 id="1-开发专门的-wiki-维护技能">1. 开发专门的 Wiki 维护技能</h4>
+<ul>
+<li>实现 Ingest、Query、Lint 三个核心工作流的自动化</li>
+<li>集成到 OpenClaw 的技能系统中</li>
+</ul>
+<h4 id="2-schema-配置管理">2. Schema 配置管理</h4>
+<ul>
+<li>需要设计适合 OpenClaw 的 Schema 格式</li>
+<li>可能需要扩展 AGENTS.md 或创建专门的 WIKI.md 配置文件</li>
+</ul>
+<h4 id="3-搜索功能增强">3. 搜索功能增强</h4>
+<ul>
+<li>对于大规模 Wiki，需要集成类似 qmd 的搜索工具</li>
+<li>或使用 OpenClaw 现有的 memory_search 功能</li>
+</ul>
+<h4 id="4-可视化界面">4. 可视化界面</h4>
+<ul>
+<li>需要开发 Wiki 浏览和编辑的 Web 界面</li>
+<li>或集成现有的 Markdown 编辑器</li>
+</ul>
+<h3 id="集成难度评估中等">集成难度评估：中等</h3>
+<p>根据我们的分析，OpenClaw 集成这个模式的难度为中等：</p>
+<ul>
+<li>
+<p><strong>基础集成</strong>（MVP）：1-2 周</p>
+<ul>
+<li>实现核心 Ingest 流程</li>
+<li>基础 Query 支持</li>
+<li>简单 Schema 配置</li>
+</ul>
+</li>
+<li>
+<p><strong>完整集成</strong>：1-2 个月</p>
+<ul>
+<li>完整的工作流支持</li>
+<li>搜索功能增强</li>
+<li>可视化界面</li>
+<li>Lint 和优化工具</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="obsidian-依赖分析">Obsidian 依赖分析</h2>
+<h3 id="obsidian-的角色定位">Obsidian 的角色定位</h3>
+<p>从 Gist 描述来看，<strong>Obsidian 不是核心依赖</strong>，而是：</p>
+<ol>
+<li><strong>查看工具</strong>：用于浏览 Wiki 内容和图视图</li>
+<li><strong>Markdown 编辑器</strong>：用于人工检查和微调</li>
+<li><strong>IDE</strong>：作为知识工作的集成开发环境</li>
+</ol>
+<h3 id="可替代方案">可替代方案</h3>
+<p>Obsidian 虽然提供了优秀的用户体验，但并不是必须的。有多种替代方案可以选择：</p>
+<h4 id="1-纯文件系统-cli-工具">1. 纯文件系统 + CLI 工具</h4>
+<ul>
+<li><strong>优势</strong>：无需 GUI，适合服务器环境</li>
+<li><strong>工具链</strong>：
+<ul>
+<li><code>cat</code>, <code>grep</code>, <code>find</code> 用于浏览和搜索</li>
+<li><code>vim</code>/<code>nvim</code> 用于编辑</li>
+<li><code>glow</code> 用于 Markdown 渲染</li>
+<li><code>mdcat</code> 用于终端 Markdown 查看</li>
+</ul>
+</li>
+</ul>
+<h4 id="2-现代-markdown-编辑器">2. 现代 Markdown 编辑器</h4>
+<ul>
+<li><strong>VS Code + Markdown 插件</strong>：免费、跨平台、可扩展</li>
+<li><strong>Typora</strong>：简洁的 Markdown 编辑器</li>
+<li><strong>Notable</strong>：开源 Markdown 笔记应用</li>
+</ul>
+<h4 id="3-专门的知识管理工具">3. 专门的知识管理工具</h4>
+<ul>
+<li><strong>Logseq</strong>：大纲笔记工具，支持 Markdown</li>
+<li><strong>Roam Research</strong>：双向链接笔记工具</li>
+<li><strong>RemNote</strong>：结合记忆卡片和笔记</li>
+</ul>
+<h4 id="4-web-based-解决方案">4. Web-based 解决方案</h4>
+<ul>
+<li><strong>BookStack</strong>：开源 Wiki 平台</li>
+<li><strong>Outline</strong>：团队知识库工具</li>
+<li><strong>自定义 Web 界面</strong>：基于 OpenClaw 的 Canvas 功能</li>
+</ul>
+<h3 id="obsidian-特定功能的替代方案">Obsidian 特定功能的替代方案</h3>
+<table>
+<thead>
+<tr>
+<th>Obsidian 功能</th>
+<th>替代方案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>图视图（Graph View）</td>
+<td>自定义 D3.js 可视化、Logseq、Roam</td>
+</tr>
+<tr>
+<td>Web Clipper</td>
+<td>浏览器保存为 Markdown、Pocket、Raindrop.io</td>
+</tr>
+<tr>
+<td>本地图片下载</td>
+<td>脚本自动化、手动下载</td>
+</tr>
+<tr>
+<td>插件生态系统</td>
+<td>自定义工具链、VS Code 插件</td>
+</tr>
+</tbody>
+</table>
+<h3 id="结论">结论</h3>
+<p><strong>Obsidian 不是必须的</strong>，但确实提供了优秀的用户体验。对于 OpenClaw 集成，可以选择：</p>
+<ol>
+<li><strong>最小化方案</strong>：纯 CLI + 文件系统，完全脱离 Obsidian</li>
+<li><strong>渐进式方案</strong>：开发简单的 Web 界面，提供基本的浏览和编辑功能</li>
+<li><strong>兼容方案</strong>：保持与 Obsidian 的兼容性，允许用户选择使用 Obsidian 作为前端</li>
+</ol>
+<hr>
+<h2 id="社区最佳实践">社区最佳实践</h2>
+<h3 id="类似项目实现">类似项目实现</h3>
+<p>社区中已经有一些类似的项目实现：</p>
+<h4 id="1-llm-wikinickwbarber">1. llm-wiki（nickwbarber）</h4>
+<ul>
+<li>基于Karpathy理念的Python实现</li>
+<li>提供命令行工具和API</li>
+<li>支持多种LLM后端</li>
+</ul>
+<h4 id="2-gpt-knowledge-base">2. gpt-knowledge-base</h4>
+<ul>
+<li>专注于自动化知识库构建</li>
+<li>支持多种数据源（PDF、网页、文本）</li>
+<li>提供Web界面</li>
+</ul>
+<h4 id="3-llm-obsidian-enhancement">3. llm-obsidian-enhancement</h4>
+<ul>
+<li>Obsidian插件，增强LLM集成</li>
+<li>自动化笔记生成和链接管理</li>
+<li>支持多种LLM API</li>
+</ul>
+<h3 id="工作流程最佳实践">工作流程最佳实践</h3>
+<p>基于社区的经验，我们总结了一些工作流程的最佳实践：</p>
+<h4 id="1-渐进式摄取">1. 渐进式摄取</h4>
+<ul>
+<li>一次处理一个来源，保持质量控制</li>
+<li>与 LLM 讨论关键要点，确保理解准确</li>
+</ul>
+<h4 id="2-定期-lint">2. 定期 Lint</h4>
+<ul>
+<li>每周进行一次 Wiki 健康检查</li>
+<li>及时处理矛盾和过时信息</li>
+</ul>
+<h4 id="3-schema-演进">3. Schema 演进</h4>
+<ul>
+<li>根据使用情况不断优化 Schema</li>
+<li>记录成功和失败的案例</li>
+</ul>
+<h4 id="4-备份策略">4. 备份策略</h4>
+<ul>
+<li>定期备份 Wiki 目录</li>
+<li>使用 Git 进行版本控制</li>
+</ul>
+<h3 id="技术优化建议">技术优化建议</h3>
+<p>为了提高系统的性能和可靠性，我们建议：</p>
+<h4 id="1-缓存机制">1. 缓存机制</h4>
+<ul>
+<li>缓存 LLM 响应，减少重复调用</li>
+<li>使用向量数据库加速相似性搜索</li>
+</ul>
+<h4 id="2-批处理优化">2. 批处理优化</h4>
+<ul>
+<li>合理设置批处理大小，平衡效率和准确性</li>
+<li>实现增量更新，避免重复处理</li>
+</ul>
+<h4 id="3-错误处理">3. 错误处理</h4>
+<ul>
+<li>完善的错误检测和恢复机制</li>
+<li>记录详细的操作日志</li>
+</ul>
+<hr>
+<h2 id="其他重要发现">其他重要发现</h2>
+<h3 id="发展趋势">发展趋势</h3>
+<p>基于我们的调研，我们观察到以下发展趋势：</p>
+<h4 id="1-从-rag-到增量-wiki">1. 从 RAG 到增量 Wiki</h4>
+<p>社区正在从简单的 RAG 转向更复杂的知识累积模式。LLM 代理将成为知识管理的主动维护者，而不仅仅是被动的检索工具。</p>
+<h4 id="2-多模态集成">2. 多模态集成</h4>
+<p>未来将支持图像、音频、视频的处理。跨模态的知识链接和检索将成为可能，让知识库更加丰富和全面。</p>
+<h4 id="3-协作模式">3. 协作模式</h4>
+<p>多人协作的 Wiki 维护将成为可能。版本控制和冲突解决机制将得到完善，支持团队协作场景。</p>
+<h4 id="4-自动化程度提升">4. 自动化程度提升</h4>
+<p>更智能的 Schema 自动生成和自适应的工作流优化将成为可能。系统将能够根据使用情况自动优化和调整。</p>
+<h3 id="潜在风险">潜在风险</h3>
+<p>尽管这个模式有很多优势，但也存在一些潜在的风险：</p>
+<h4 id="1-llm-可靠性">1. LLM 可靠性</h4>
+<p>幻觉和偏见问题仍需人工监督。不同 LLM 模型的性能差异也需要考虑。</p>
+<h4 id="2-数据隐私">2. 数据隐私</h4>
+<p>敏感信息的处理和保护需要特别注意。本地部署 vs 云服务的权衡需要根据具体场景进行选择。</p>
+<h4 id="3-成本管理">3. 成本管理</h4>
+<p>API 调用的成本控制需要考虑。高效的使用策略需要制定和执行。</p>
+<h4 id="4-技术债务">4. 技术债务</h4>
+<p>Schema 和结构的长期维护需要考虑。向后兼容性保证需要设计。</p>
+<hr>
+<h2 id="总结">总结</h2>
+<p>Karpathy 提出的 LLM Wiki 模式是一种创新的思路，它通过增量构建和持续维护，试图解决传统 RAG 模式的一些固有问题。</p>
+<p>这个模式的核心优势在于：</p>
+<ul>
+<li>知识累积性强，形成复利效应</li>
+<li>交叉引用完善，形成知识网络</li>
+<li>矛盾检测，主动识别和标记信息冲突</li>
+<li>自动化程度高，减少人工维护负担</li>
+<li>灵活性强，适用于多种场景</li>
+</ul>
+<p>但也存在一些局限性和挑战：</p>
+<ul>
+<li>LLM 幻觉风险，需要人工监督</li>
+<li>初始成本高，需要投入时间建立合适的 Schema 和 workflow</li>
+<li>扩展性限制，大规模知识库需要更复杂的基础设施</li>
+<li>Token 消耗高，频繁更新大量页面可能产生较高成本</li>
+<li>编辑冲突，多人协作时可能出现并发修改问题</li>
+</ul>
+<p>对于 OpenClaw 的集成，我们认为：</p>
+<ul>
+<li>兼容性高，架构天然匹配</li>
+<li>集成难度为中等，MVP 需要 1-2 周，完整集成需要 1-2 个月</li>
+<li>Obsidian 不是必须的，有多种替代方案可以选择</li>
+</ul>
+<p>总的来说，这个模式是一个值得探索的方向，它为 LLM 知识库的构建提供了一种新的思路。我们建议进行原型验证，评估具体实现的技术细节。</p>
+<hr>
+<h2 id="参考来源">参考来源</h2>
+<ol>
+<li>
+<p><strong>主要来源</strong></p>
+<ul>
+<li>Karpathy Gist: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f</li>
+</ul>
+</li>
+<li>
+<p><strong>相关项目</strong></p>
+<ul>
+<li>llm-wiki: https://github.com/nickwbarber/llm-wiki</li>
+<li>gpt-knowledge-base（需要进一步验证）</li>
+</ul>
+</li>
+<li>
+<p><strong>工具参考</strong></p>
+<ul>
+<li>Obsidian: https://obsidian.md</li>
+<li>Marp: https://marp.app</li>
+<li>qmd: Local search engine for markdown files</li>
+</ul>
+</li>
+<li>
+<p><strong>技术概念</strong></p>
+<ul>
+<li>RAG (Retrieval-Augmented Generation)</li>
+<li>LLM Agents</li>
+<li>Personal Knowledge Management</li>
+</ul>
+</li>
+</ol>
+<hr>
+<p><strong>调研完成时间</strong>: 2026-04-19<br>
+<strong>调研深度</strong>: 中等（基于公开信息和社区讨论）</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[我是怎样在 OpenClaw 上部署多 Agent，并把它们接入 Discord 的]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/wo-shi-zen-yang-zai-openclaw-shang-bu-shu-duo-agentbing-ba-ta-men-jie-ru-discord-de/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/wo-shi-zen-yang-zai-openclaw-shang-bu-shu-duo-agentbing-ba-ta-men-jie-ru-discord-de/">
+        </link>
+        <updated>2026-04-18T13:15:14.000Z</updated>
+        <summary type="html"><![CDATA[<p>这不是一篇&quot;照着官方文档抄配置&quot;的教程，而是一篇完整的实践复盘。<br>
+我从单 Agent 出发，最终在 Ubuntu 24 VPS 上搭出了一套可运行的 OpenClaw 多 Agent系统，并完成了 Discord 集成。过程中最有价值的部分，不是最后那份配置文件，而是中间几次关键认知修正。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>这不是一篇&quot;照着官方文档抄配置&quot;的教程，而是一篇完整的实践复盘。<br>
+我从单 Agent 出发，最终在 Ubuntu 24 VPS 上搭出了一套可运行的 OpenClaw 多 Agent系统，并完成了 Discord 集成。过程中最有价值的部分，不是最后那份配置文件，而是中间几次关键认知修正。</p>
+<!-- more -->
+<h2 id="一-我为什么要折腾多-agent">一、我为什么要折腾多 Agent</h2>
+<p>一开始，我的目标很明确：我不想让一个大而全的 Agent 既负责聊天、又负责搜索、还负责写代码和运维。这样虽然&quot;能用&quot;，但任务一复杂，角色就会混乱，模型成本和上下文负担也会一起上升。</p>
+<p>所以我决定把系统拆成三个角色：</p>
+<ul>
+<li><strong>主脑 mainbrain</strong>：负责和我对话、理解任务、拆解任务、调用其他 Agent、汇总最终结果</li>
+<li><strong>外脑 MAGI</strong>：负责搜索、调研、长文档分析、补充思路和提供外部参考</li>
+<li><strong>码农 codefarmer</strong>：负责工具调用、代码编写、自主测试、排错和运维执行</li>
+</ul>
+<p>从结果上看，这个方向是对的。真正难的不是&quot;定义三个名字&quot;，而是让这三个 Agent 在 OpenClaw 的实际机制里稳定协作起来。</p>
+<hr>
+<h2 id="二-最初的错误直觉让-discord-里的-bot-互相">二、最初的错误直觉：让 Discord 里的 Bot 互相 @</h2>
+<p>我最早的设想其实很自然：既然我已经在 Discord 里配了多个 bot，那是不是可以让主脑 bot 在频道里直接 @MAGI 或 @codefarmer，把子任务派出去，等它们做完再 @ 主脑回报结果？</p>
+<p>但这个思路后来被我彻底放弃了。原因不是&quot;不优雅&quot;，而是<strong>不稳定</strong>：在 OpenClaw 的多 Bot 场景里，bot 消息过滤、<code>allowBots/respondToBots</code> 行为的覆盖冲突、共享频道造成的上下文污染，以及最危险的 Ping-Pong 死循环，都会让&quot;Bot 互相 @&quot;变成一个很脆弱的方案。</p>
+<p>我后来确认下来的结论是：</p>
+<ul>
+<li><strong>Discord 更适合做人类可见的 UI 层</strong>，不适合作为 Agent 之间的真实通信总线</li>
+<li><strong>Agent 之间的协作，应该走 OpenClaw 内建的 <code>sessions_send</code> / <code>sessions_spawn</code></strong></li>
+<li>如果一定要在 Discord 里做可视化过程展示，也应该让它只承担&quot;展示&quot;和&quot;旁路通知&quot;的职责，而不是让 Bot 彼此靠频道消息驱动</li>
+</ul>
+<p>这一步认知变化，基本决定了后面整套架构会不会稳。</p>
+<hr>
+<h2 id="三-真正可行的通信方式discord-做-uisession-工具做调度">三、真正可行的通信方式：Discord 做 UI，Session 工具做调度</h2>
+<p>搞清楚这个问题之后，整个系统的理解就清楚了：<strong>用户在 Discord 里跟主脑对话，主脑在底层通过 OpenClaw 的 session 机制调度其他 Agent，子 Agent 的结果再回到主脑，由主脑统一对外输出。</strong></p>
+<p>这里有两个关键工具：</p>
+<h3 id="sessions_spawn适合一次性子任务"><code>sessions_spawn</code>：适合一次性子任务</h3>
+<p>如果主脑需要临时派发一个独立任务，比如&quot;去调研某个方案&quot;&quot;分析这份文档&quot;&quot;生成一份报告&quot;，那更适合用 <code>sessions_spawn</code>。它会创建一个新的隔离 session，子任务在后台跑，完成后再回传结果。</p>
+<p>这类任务很像&quot;开一个子进程&quot;。配合 <code>thread: true</code> 参数使用，复杂任务的过程会折叠进 Discord Thread，这样既能监工，又不会把主频道刷爆。</p>
+<pre><code class="language-js">// 主脑调用示例
+sessions_spawn({
+  task: &quot;请调研最新的前端框架并总结要点&quot;,
+  label: &quot;research-task-01&quot;,
+  agentId: &quot;magi&quot;,
+  runTimeoutSeconds: 120,
+  thread: true   // 复杂任务推荐加这个，过程折叠进 Thread
+})
+</code></pre>
+<p>执行后立即返回 <code>{ status: &quot;accepted&quot;, runId, childSessionKey }</code>，子任务在后台跑，完成后结果自动回传主脑。</p>
+<h3 id="sessions_send适合和常驻-agent-持续协作"><code>sessions_send</code>：适合和常驻 Agent 持续协作</h3>
+<p>如果目标 Agent 本来就是常驻的，比如 codefarmer 长期负责同一个代码库的调试，那更适合用 <code>sessions_send</code>。它不是新建一次性子任务，而是给已有 session 发消息，可以进行有限轮次的来回交流。</p>
+<pre><code class="language-js">sessions_send({
+  sessionKey: &quot;agent:codefarmer:main&quot;,
+  message: &quot;帮我 review 这段代码并给出修改建议&quot;,
+  timeoutSeconds: 60   // 等待 60 秒回复
+})
+</code></pre>
+<p><strong>一次性任务</strong>和<strong>持续协作</strong>在 OpenClaw 里是两套不同机制，理解这个区别非常重要。</p>
+<hr>
+<h2 id="四-从能跑到正确单-gateway-多-agent-的几个硬坑">四、从&quot;能跑&quot;到&quot;正确&quot;：单 Gateway 多 Agent 的几个硬坑</h2>
+<h3 id="坑一一个-agent-必须对应一个独立-bot-token-accountid">坑一：一个 Agent 必须对应一个独立 Bot Token / accountId</h3>
+<p>单 Gateway 多 Agent 并不是&quot;一个 Telegram Bot / 一个 Discord Bot 然后路由给多个 Agent&quot;，而是<strong>每个 Agent 都应该有独立的 bot 账号和独立 <code>accountId</code></strong>，然后通过 <code>bindings</code> 绑定到对应 agent。</p>
+<pre><code class="language-json5">channels: {
+  telegram: {
+    accounts: {
+      default:    { botToken: &quot;TOKEN_FOR_MAINBRAIN&quot; },
+      magi:       { botToken: &quot;TOKEN_FOR_MAGI&quot; },
+      codefarmer: { botToken: &quot;TOKEN_FOR_CODEFARMER&quot; },
+    },
+  },
+  discord: {
+    accounts: {
+      default:    { token: &quot;DISCORD_TOKEN_MAINBRAIN&quot; },
+      magi:       { token: &quot;DISCORD_TOKEN_MAGI&quot; },
+      codefarmer: { token: &quot;DISCORD_TOKEN_CODEFARMER&quot; },
+    },
+  },
+},
+</code></pre>
+<p>这点尤其影响 Discord。因为在同一个 guild 里，如果只是写多条 binding 而不区分 <code>accountId</code>，最后往往只有最后一条生效，表面上像&quot;配置写了&quot;，实际上路由是错的。</p>
+<h3 id="坑二agentdir-和-workspace-不是一回事">坑二：<code>agentDir</code> 和 workspace 不是一回事</h3>
+<p>OpenClaw 里每个 Agent 还有独立的 <code>agentDir</code>（存放 auth profiles、model registry 等内容），<strong>绝对不能多个 Agent 共用</strong>，否则 session 和认证很容易冲突。</p>
+<p>真正的多 Agent 隔离，不只是&quot;每人一个工作目录&quot;，而是&quot;每人一套 agentDir + workspace + accountId&quot;三者全部独立。</p>
+<pre><code class="language-bash"># agentDir 由 openclaw agents add 自动创建，无需手动创建
+# 但如果多个 Agent 需要共享同一个 API 凭证，需手动复制：
+cp ~/.openclaw/agents/mainbrain/agent/auth-profiles.json \
+   ~/.openclaw/agents/magi/agent/auth-profiles.json
+</code></pre>
+<h3 id="坑三从单-agent-迁移不能硬改要平滑过渡">坑三：从单 Agent 迁移不能硬改，要平滑过渡</h3>
+<p>我的环境不是从零开始的，而是已经跑通了 Ubuntu 24 VPS + CLI 安装 + Node.js v22+ + TG 和 Discord 的单机器人版本。</p>
+<p>所以更稳的迁移路径是：</p>
+<pre><code class="language-bash"># 1. 先备份旧配置
+cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.bak
+
+# 2. 把原有 workspace 改名为 workspace-mainbrain
+mv ~/.openclaw/workspace ~/.openclaw/workspace-mainbrain
+
+# 3. 在配置中显式声明现有 bot 为 main agent 的默认账号
+
+# 4. 先确认原有功能不中断，再逐步添加新 agent 和 bindings
+openclaw gateway restart
+</code></pre>
+<p>这个迁移视角，比&quot;新手从零搭建教程&quot;更接近真实生产环境。</p>
+<h3 id="坑四ubuntu-vps-上一定要上-systemd">坑四：Ubuntu VPS 上一定要上 systemd</h3>
+<p>只靠 <code>openclaw gateway start</code> 远远不够。SSH 断开、进程异常退出、服务器重启，都会导致服务中断。对外看，补一个 systemd service 文件只是&quot;小操作&quot;，但它是&quot;玩具系统&quot;和&quot;长期运行系统&quot;的分水岭：</p>
+<pre><code class="language-ini"># /etc/systemd/system/openclaw.service
+[Unit]
+Description=OpenClaw Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=youruser
+WorkingDirectory=/home/youruser
+ExecStart=/usr/local/bin/openclaw gateway
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<pre><code class="language-bash">sudo systemctl daemon-reload
+sudo systemctl enable --now openclaw
+sudo systemctl status openclaw
+sudo journalctl -u openclaw -f
+</code></pre>
+<hr>
+<h2 id="五-模型分工不是哪个强用哪个而是按角色分配">五、模型分工：不是&quot;哪个强用哪个&quot;，而是按角色分配</h2>
+<p>当架构稳定之后，开始认真处理另一个问题：三个 Agent 应该分别使用什么模型。</p>
+<p>这次我结合了模型能力、上下文窗口大小和 OpenClaw 的实际配置格式，整理出一套更像&quot;工程分工&quot;而不是&quot;排行榜崇拜&quot;的分配思路。</p>
+<h3 id="主脑优先规划与调度能力">主脑：优先规划与调度能力</h3>
+<p>主脑不是拿来刷 benchmark 的，它最重要的是任务分解、长链路规划、输出结构化结论。核心思路是：</p>
+<ul>
+<li><strong>主力模型</strong>承担全局规划（高输出 token 限制是优势）</li>
+<li><strong>超长上下文模型</strong>作为长会话接替（超过上下文阈值时接棒）</li>
+<li><strong>轻量模型</strong>负责高频短路由，减少主力 token 压力</li>
+</ul>
+<pre><code class="language-json5">// 主脑模型配置示意（OpenClaw agents.list 格式）
+{
+  id: &quot;mainbrain&quot;,
+  model: {
+    primary: &quot;z-ai/glm5&quot;,
+    fallbacks: [
+      &quot;qwen/qwen3.5-397b-a17b&quot;,          // 超长会话接替：1M 上下文
+      &quot;openrouter/z-ai/glm-4.5-air:free&quot;, // 轻量降级路由
+      &quot;openrouter/openai/gpt-oss-120b:free&quot;,
+    ],
+  },
+  thinkingDefault: &quot;low&quot;,
+  timeoutSeconds: 900,
+}
+</code></pre>
+<h3 id="外脑搜索执行和内容消化要分开看">外脑：搜索执行和内容消化要分开看</h3>
+<p>外脑不是&quot;会搜就行&quot;。真正的外脑要分成两层：<strong>前一层负责搜索执行和资料召回，后一层负责把大量材料吃进去做归纳整理。</strong> 有的模型更适合出去找资料，有的模型更适合消化超长上下文。把这两件事分开，外脑才真像&quot;智库&quot;而不是&quot;高级搜索框&quot;。</p>
+<pre><code class="language-json5">{
+  id: &quot;magi&quot;,
+  model: {
+    primary: &quot;moonshotai/kimi-k2.5&quot;,      // 262K，并行搜索执行
+    fallbacks: [
+      &quot;minimaxai/minimax-m2.5&quot;,            // 1M 上下文，大批量内容消化
+      &quot;meituan-longcat/LongCat-Flash-Thinking-2601&quot;, // 深度推理验证
+      &quot;meituan-longcat/LongCat-Flash-Lite&quot;, // 快速召回预筛选
+    ],
+  },
+  thinkingDefault: &quot;low&quot;,
+  timeoutSeconds: 600,
+}
+</code></pre>
+<h3 id="码农执行效率比全能更重要">码农：执行效率比&quot;全能&quot;更重要</h3>
+<p>码农的职责很明确：能调工具、能写代码、能看报错、能连续修，比&quot;会讲道理&quot;更重要。<code>thinkingDefault</code> 设为 <code>off</code>，优先保证执行速度；<code>timeoutSeconds</code> 设为 1800，因为运维任务天然耗时更长。</p>
+<pre><code class="language-json5">{
+  id: &quot;codefarmer&quot;,
+  model: {
+    primary: &quot;openrouter/stepfun/step-3.5-flash:free&quot;, // SWE-bench 74.4%，免费
+    fallbacks: [
+      &quot;minimaxai/minimax-m2.5&quot;,
+      &quot;meituan-longcat/LongCat-Flash-Chat&quot;,
+      &quot;openrouter/qwen/qwen3-coder:free&quot;,  // 仓库级代码理解，256K
+    ],
+  },
+  thinkingDefault: &quot;off&quot;,
+  timeoutSeconds: 1800,
+}
+</code></pre>
+<hr>
+<h2 id="六-prompt-文件结构规则为什么要拆开">六、Prompt 文件结构：规则为什么要拆开</h2>
+<p>工作区文件怎么组织，看起来是&quot;文案整理&quot;，实际上是架构问题。</p>
+<p>我中间有一段专门讨论：主脑的 <code>AGENTS.md</code> 里，到底要不要把&quot;我是 Commander，我有哪几个下属，怎么协作&quot;全都写进去。</p>
+<p><strong>最后接受的做法是拆成三层：</strong></p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AGENTS.md</code></td>
+<td>角色入口、会话启动规则、&quot;先读哪些文件&quot;的引导</td>
+</tr>
+<tr>
+<td><code>ROLE-COLLAB-RULES.md</code></td>
+<td>团队分工和协作流程，统一收口</td>
+</tr>
+<tr>
+<td><code>TOOLS.md</code></td>
+<td>工具使用边界和注意事项，包含跨 Agent 调用规范</td>
+</tr>
+</tbody>
+</table>
+<p>这样做的好处很实际：避免同一规则在多个文件里重复（浪费 token）；以后改团队结构时只改一处；把&quot;角色认知&quot;和&quot;工具避坑&quot;拆开后，Agent 的行为更稳。</p>
+<p><strong>主脑 AGENTS.md 示例（精简入口版）：</strong></p>
+<pre><code class="language-markdown"># AGENTS.md - Your Workspace
+
+This is your central command center.
+
+## Every Session
+1. Read `SOUL.md` — this is who you are.
+2. Read `USER.md` — this is who you're serving.
+3. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context.
+4. Read `MEMORY.md` for long-term curated memories.
+
+## Swarm Orchestration
+You are the **Commander**. You do not work alone.
+Before executing complex code or deep research, you MUST read
+`ROLE-COLLAB-RULES.md` to understand your team (@magi, @codefarmer)
+and how to delegate tasks to them.
+</code></pre>
+<hr>
+<h2 id="七-discord-频道结构最终定下来的布局">七、Discord 频道结构：最终定下来的布局</h2>
+<p>在 Discord 集成上，最终不再追求&quot;Bot 之间在公开频道里演戏&quot;，而是让频道职责更清晰：</p>
+<table>
+<thead>
+<tr>
+<th>频道</th>
+<th>谁在里面</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>#主脑控制台</code></td>
+<td>我 + mainbrain</td>
+<td>主入口，下发任务，看最终汇总结果</td>
+</tr>
+<tr>
+<td><code>#研究专区</code></td>
+<td>我 + MAGI</td>
+<td>直接向 MAGI 提问，或查看研究过程</td>
+</tr>
+<tr>
+<td><code>#代码车间</code></td>
+<td>我 + codefarmer</td>
+<td>直接派代码任务，查看报错和修复过程</td>
+</tr>
+<tr>
+<td><code>#系统通知</code></td>
+<td>我 + 三个 Bot（只写不读）</td>
+<td>全局进度看板，Bot 主动推送关键状态</td>
+</tr>
+</tbody>
+</table>
+<p>关键权限原则：<code>#系统通知</code> 频道所有 Bot 关闭 <code>View Channel History</code>，只保留 <code>Send Messages</code>，防止 Bot 读取彼此的状态消息然后互相触发。</p>
+<p><strong>一次完整任务的工作流：</strong></p>
+<pre><code>你（在 #主脑控制台）
+↓ &quot;帮我调研最新前端框架，写一个接入 Demo&quot;
+
+mainbrain
+↓ [底层 sessions_spawn, thread:true] → #主脑控制台 自动开 Thread
+↓ 系统通知: &quot;🧠 mainbrain: 任务拆解中...&quot; → #系统通知
+
+MAGI（在 Thread 里直播搜索过程）
+↓ 系统通知: &quot;🔬 MAGI: 开始调研...&quot; → #系统通知
+↓ 系统通知: &quot;🔬 MAGI: ✅ 调研完成&quot; → #系统通知
+↓ [结果自动回传 mainbrain]
+
+mainbrain
+↓ [底层 sessions_send → codefarmer]
+
+codefarmer（同样在 Thread 里输出代码过程）
+↓ 系统通知: &quot;💻 codefarmer: ✅ 完成，改了4个文件&quot; → #系统通知
+↓ [结果回传 mainbrain]
+
+mainbrain
+↓ 系统通知: &quot;🧠 mainbrain: 汇总完成&quot; → #系统通知
+↓ 在 #主脑控制台 输出最终汇总报告
+
+你（在 #主脑控制台 看到干净的最终结果，需要&quot;监工&quot;时点开 Thread）
+</code></pre>
+<hr>
+<h2 id="八-部署收益的实际数据">八、部署收益的实际数据</h2>
+<p>经过这一轮部署，实际记录了两个典型案例的运行数据：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均响应时间</td>
+<td>2–5 秒</td>
+<td>取决于任务复杂度</td>
+</tr>
+<tr>
+<td>Token 消耗优化</td>
+<td>40–60%</td>
+<td>通过按需加载和角色分工</td>
+</tr>
+<tr>
+<td>系统可用性</td>
+<td>99.5%+</td>
+<td>通过 fallback 机制和 systemd 守护</td>
+</tr>
+</tbody>
+</table>
+<p><strong>案例一：多 Agent 协作研究 OpenClaw Agent 人格 MD 按需加载优化方案</strong><br>
+总耗时约 8 小时，产出 7 份设计文档，Token 消耗比单 Agent 方式下降约 40–60%。</p>
+<p><strong>案例二：HDD 坏道分析</strong><br>
+mainbrain 接收需求、指派给 codefarmer，codefarmer 读取检测文件、分析坏道分布、生成分区建议，mainbrain 审核并纠正逻辑错误，全流程耗时约 5 分钟。</p>
+<hr>
+<h2 id="九-我最终理解的-openclaw-多-agent">九、我最终理解的 OpenClaw 多 Agent</h2>
+<p>走完这一轮之后，对 OpenClaw 多 Agent 的理解发生了很大变化。它不是&quot;给三个 Bot 配三个模型&quot;这么简单，而是一个同时包含<strong>路由、隔离、协作协议、工作区设计、可视化交互</strong>的系统工程。</p>
+<p>如果只看最终结果，这套系统可以概括成一句话：</p>
+<blockquote>
+<p><strong>一个主脑负责对外，一个外脑负责信息，一个码农负责执行；<br>
+Discord 是面板，Session 是总线，Workspace 文件是治理层。</strong></p>
+</blockquote>
+<hr>
+<h2 id="十-给后来者的几条经验">十、给后来者的几条经验</h2>
+<p>如果你也准备自己搭一套 OpenClaw 多 Agent，这几条最值得先知道：</p>
+<ul>
+<li><strong>不要先从&quot;Bot 怎么互相 @&quot;开始想</strong>——先把 Agent 间通信和 Discord UI 分层</li>
+<li><strong>不要偷懒复用 bot / accountId / agentDir</strong>——多 Agent 的隔离是基础，不是优化项</li>
+<li><strong>不要只关注模型强弱</strong>——先明确每个 Agent 的职责，再去选模型</li>
+<li><strong>不要把所有规则都塞进 <code>AGENTS.md</code></strong>——角色、协作、工具边界最好拆分维护</li>
+<li><strong>不要忽略长期运行问题</strong>——Ubuntu VPS 上的 systemd、备份、迁移策略都应该提前考虑</li>
+</ul>
+<hr>
+<h2 id="结语">结语</h2>
+<p>这次部署最大的收获，不是&quot;我把 OpenClaw 跑起来了&quot;，而是终于把&quot;多 Agent 系统到底该怎么落地&quot;这件事想明白了。</p>
+<p>从最开始想让 Bot 在 Discord 里彼此 @，到后来改用 <code>sessions_spawn</code> / <code>sessions_send</code>；从单一机器人，到每个 Agent 独立 bot、独立账号、独立目录；从 prompt 堆砌，到分层治理文件；从泛泛模型列表，到角色化模型分工——这整个过程本身，才是这篇文章真正值得分享的内容。</p>
+<hr>
+<p><strong>作者</strong>: MAGI + MainBrain + 人类<br>
+<strong>日期</strong>: 2026 年 4 月<br>
+<strong>环境</strong>: Ubuntu 24.04 LTS · Oracle VPS · OpenClaw 2026.3.x · Node.js v22</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[持续折腾open claw]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/chi-xu-zhe-teng-open-claw/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/chi-xu-zhe-teng-open-claw/">
+        </link>
+        <updated>2026-02-20T06:46:36.000Z</updated>
+        <summary type="html"><![CDATA[<p>Openclaw是真好玩儿！已经玩儿了大半个月了，欲罢不能，感觉还有很多可能没有发挥出来。肯定还要继续折腾的，不过这玩儿现在也真的是鲁棒性太差，很容易就玩儿挂了。于是决定开个帖子持续更新一下。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>Openclaw是真好玩儿！已经玩儿了大半个月了，欲罢不能，感觉还有很多可能没有发挥出来。肯定还要继续折腾的，不过这玩儿现在也真的是鲁棒性太差，很容易就玩儿挂了。于是决定开个帖子持续更新一下。</p>
+<!-- more -->
+<h1 id="首先介绍下环境">首先介绍下环境</h1>
+<p>我的是Oracle的免费vps，arm3核+18G内存+100G硬盘，跑这玩儿绰绰有余了。</p>
+<h1 id="目前遇到的主要问题并解决了的">目前遇到的主要问题并解决了的：</h1>
+<h2 id="问题-1网关进程假死导致端口冲突-http-502-port-18789-in-use">🔴 问题 1：网关进程假死导致端口冲突 (HTTP 502 / Port 18789 in use)</h2>
+<p><strong>现象：</strong><br>
+执行 <code>openclaw gateway restart</code> 失败，提示端口 18789 已被占用。手动 <code>kill</code> 进程后，系统底层的 systemd 会瞬间自动将其重启，导致陷入无限死循环，外部 Tailscale 请求无法被转交，报错 HTTP 502。<br>
+<strong>解决方案：</strong><br>
+必须先切断系统的自动复活机制，清理残留端口，再重新安装服务 。 <a href="https://github.com/openclaw/openclaw/issues/1380">github</a></p>
+<pre><code class="language-bash"># 1. 停止系统托管服务，避免其自动重启进程
+systemctl --user stop openclaw-gateway.service
+
+# 2. 强制终止残留的死锁进程，清理锁文件
+openclaw gateway --force
+rm -f ~/.openclaw/gateway.lock
+
+# 3. 重新安装并拉起系统服务
+openclaw gateway install --force
+systemctl --user enable --now openclaw-gateway.service
+</code></pre>
+<h2 id="问题-2修改配置以消除-tailscale-与本地安全警告">🔴 问题 2：修改配置以消除 Tailscale 与本地安全警告</h2>
+<p><strong>现象：</strong><br>
+状态表 (<code>openclaw status</code>) 中出现 <code>Reverse proxy headers are not trusted</code> 等警告，并且无法正常信任 Tailscale 传来的请求 。 <a href="https://fossies.org/linux/openclaw/docs/gateway/tailscale.md">fossies</a><br>
+<strong>解决方案：</strong><br>
+将 OpenClaw 的网关绑定到本地，开启 Serve 模式，并信任本地环回代理 。 <a href="https://openclaw.dog/docs/gateway/tailscale/">openclaw</a></p>
+<pre><code class="language-bash">openclaw config set gateway.bind loopback
+openclaw config set gateway.tailscale.mode serve
+openclaw config set gateway.trustedProxies '[&quot;127.0.0.1&quot;, &quot;::1&quot;]'
+openclaw config set gateway.controlUi.allowInsecureAuth false
+openclaw gateway restart
+</code></pre>
+<h2 id="问题-3命令行设备-token-丢失-missing-scope-1008-pairing-required">🔴 问题 3：命令行设备 Token 丢失 (Missing scope / 1008 pairing required)</h2>
+<p><strong>现象：</strong><br>
+由于网关崩溃并经历了强制重装，之前的认证凭据损坏失效，CLI 和网页均提示 <code>unreachable (missing scope: operator.admin)</code> 或 <code>1008 pairing required</code> 。 <a href="https://github.com/openclaw/openclaw/issues/4833">github</a><br>
+<strong>解决方案：</strong><br>
+通过清理旧的身份文件强制系统重新生成最高权限，或通过免验证模式进入后台生成长效 Token 。 <a href="https://github.com/openclaw/openclaw/issues/4833">github</a></p>
+<pre><code class="language-bash"># 方案 A：清理旧认证文件，让系统自动生成新的
+rm -f ~/.openclaw/identity/device.json
+rm -f ~/.openclaw/devices/paired.json
+systemctl --user restart openclaw-gateway.service
+
+# 方案 B：生成带最高权限的临时单次登录链接
+openclaw dashboard --no-open
+# 复制输出的 /#token=... 链接进行登录
+</code></pre>
+<h2 id="问题-4tailscale-serve-转发失效-502-bad-gateway">🔴 问题 4：Tailscale Serve 转发失效 (502 Bad Gateway)</h2>
+<p><strong>现象：</strong><br>
+OpenClaw 已经在 18789 端口健康运行，但通过 Tailscale 域名访问依旧报 502 错误。<br>
+<strong>解决方案：</strong><br>
+使用 Tailscale 最新的 CLI 语法，强行重置并映射后台 HTTPS 端口。</p>
+<pre><code class="language-bash">sudo tailscale serve reset
+sudo tailscale serve --bg http://127.0.0.1:18789
+</code></pre>
+<h2 id="问题-5终极救命稻草ssh-隧道直连访问">🔴 问题 5：终极救命稻草：SSH 隧道直连访问</h2>
+<p><strong>现象：</strong><br>
+当外网、域名、反向代理全部崩溃时，需要一种 100% 能够进入控制台的备用方案。<br>
+<strong>解决方案：</strong><br>
+利用 SSH 建立本地端口转发隧道。在 Windows 下，需要先右键私钥文件 <code>属性 -&gt; 安全 -&gt; 高级</code>，删除所有继承权限，仅授予当前用户“完全控制”权限，以防 SSH 报 <code>WARNING: UNPROTECTED PRIVATE KEY FILE!</code> 的安全错误。</p>
+<pre><code class="language-bash">ssh -i &quot;你的私钥路径&quot; -N -L 18789:127.0.0.1:18789 ubuntu@你的VPS公网IP
+</code></pre>
+<p>建立隧道后，直接在本地浏览器访问 <code>http://localhost:18789/</code>，这会被 OpenClaw 视为最高级别的本地安全访问，完全无需配对。</p>
+<h2 id="问题-6外网设备-手机-的配对审批与浏览器兼容性">🔴 问题 6：外网设备 (手机) 的配对审批与浏览器兼容性</h2>
+<p><strong>现象：</strong><br>
+手机端 Tailscale 连通，但 Via 浏览器无法打开网页（因为自带的加密 DNS 和本地屏蔽规则破坏了 <code>.ts.net</code> 的内网解析）。换 Chrome 后成功打开页面，但提示 <code>1008: pairing required</code>。<br>
+<strong>解决方案：</strong></p>
+<ol>
+<li>避开使用强制公网 DNS 解析的轻量浏览器 (如 Via)，改用 Chrome。</li>
+<li>手机属于“外部新设备”，需在电脑的 SSH 终端中进行手动授权审批，审批后便能永久通行：</li>
+</ol>
+<pre><code class="language-bash"># 查看有哪些设备在申请敲门
+openclaw devices list
+
+# 批准手机的连接申请（复制列表里的待审批 req_id）
+openclaw devices approve &lt;你的请求ID&gt;
+</code></pre>
+<h2 id="僵尸gateway进程简报">🧟 僵尸Gateway进程简报</h2>
+<h3 id="现象what">📌 现象（What）</h3>
+<p>系统中有 <strong>两个</strong> <code>openclaw-gateway</code> 进程在同时运行：</p>
+<table>
+<thead>
+<tr>
+<th>PID</th>
+<th>状态</th>
+<th>CPU</th>
+<th>内存</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2392085</td>
+<td>正常</td>
+<td>0.9%</td>
+<td>471MB</td>
+<td>系统服务（systemd管理）</td>
+</tr>
+<tr>
+<td><strong>2435254</strong></td>
+<td><strong>僵尸</strong></td>
+<td><strong>138%</strong></td>
+<td>336MB</td>
+<td><strong>孤儿进程，死循环中</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="时间线when">⏰ 时间线（When）</h3>
+<ul>
+<li><strong>02:16</strong> — 正常gateway启动（PID 2392085）</li>
+<li><strong>04:10</strong> — 僵尸gateway启动（PID 2435254），随后进入CPU死循环</li>
+<li><strong>当前</strong> — 已持续占用CPU超过24小时</li>
+</ul>
+<h3 id="根本原因why-how">🔍 根本原因（Why &amp; How）</h3>
+<p><strong>核心原因</strong>：NotebookLM CLI 启动了一个<strong>独立</strong>的gateway实例。</p>
+<p><strong>过程还原</strong>：</p>
+<ol>
+<li>你在终端执行了NotebookLM命令</li>
+<li>NotebookLM（或某个脚本）启动了 <code>openclaw-gateway</code> 并指定：
+<ul>
+<li>端口：<code>打码</code>（而非默认的8080）</li>
+<li>Token：<code>打码</code></li>
+</ul>
+</li>
+<li>这个实例<strong>不是</strong>通过systemd启动的，而是直接调用的</li>
+<li>它与已运行的systemd服务冲突，陷入某种IO/网络等待的死循环</li>
+</ol>
+<p><strong>证据</strong>：</p>
+<pre><code class="language-bash"># 僵尸进程的环境变量
+OPENCLAW_GATEWAY_PORT=打码
+OPENCLAW_GATEWAY_TOKEN=打码
+</code></pre>
+<h3 id="️-如何避免">⚠️ 如何避免</h3>
+<ol>
+<li>
+<p><strong>NotebookLM使用时指定已有gateway</strong>：</p>
+<pre><code class="language-bash">export OPENCLAW_GATEWAY_URL=&quot;http://localhost:8080&quot;
+export OPENCLAW_GATEWAY_TOKEN=&quot;你主服务的token&quot;
+# 这样就不会自动启动新gateway
+</code></pre>
+</li>
+<li>
+<p><strong>如果必须启动独立实例</strong>：</p>
+<pre><code class="language-bash"># 先停止systemd服务
+sudo systemctl stop openclaw-gateway
+# 再手动启动
+openclaw-gateway --port 18789 &amp;
+</code></pre>
+</li>
+<li>
+<p><strong>使用完毕后清理</strong>：</p>
+<pre><code class="language-bash"># 杀死游离的gateway进程
+killall openclaw-gateway
+# 然后恢复systemd服务
+sudo systemctl start openclaw-gateway
+</code></pre>
+</li>
+<li>
+<p><strong>定期监控</strong>：</p>
+<pre><code class="language-bash">ps aux | grep openclaw-gateway | grep -v grep
+# 如果看到多个gateway进程，那就是问题
+</code></pre>
+</li>
+</ol>
+<p><strong>关于上述的僵尸进程问题，一开始并没有彻底解决，然后又花了好久才处理掉。我觉得应该是我最开始安装埋下的锅。我是root权限安装，然后又迁移到user权限下，这个隐患一直没有解除掉。</strong></p>
+<p>整体来说，这次排错确实费了不少周折，但也彻底摸清了 OpenClaw 在 Linux/Ubuntu 下最容易踩坑的系统级机制。以下总结是这次核心故障点和最直接的终极解决方案，防止以后重蹈覆辙：</p>
+<h3 id="核心问题一多版本网关服务冲突端口霸占">核心问题一：多版本网关服务冲突（端口霸占）</h3>
+<p>系统内同时存在两个网关守护进程在“神仙打架”。一个是旧版安装残留的系统级服务（名为 <code>openclaw.service</code>），另一个是我们新装的用户级服务（名为 <code>openclaw-gateway.service</code>）。由于旧版服务随系统率先启动并霸占了 <code>18789</code> 端口，导致新版服务虽然启动但无法对外提供连接，你在终端里看到的所有状态实际上都是那个旧版“僵尸进程”的伪装 。 <a href="https://github.com/openclaw/openclaw/issues/5103">github</a></p>
+<h3 id="核心问题二全局环境变量导致路径漂移">核心问题二：全局环境变量导致路径漂移</h3>
+<p>那个潜伏在系统底层的旧版服务，其配置文件 <code>/etc/systemd/system/openclaw.service</code> 中被硬编码写入了错误的全局变量 <code>Environment=&quot;OPENCLAW_HOME=/home/ubuntu/.openclaw&quot;</code>。由于系统默认会在该变量指定的路径后再次拼接 <code>.openclaw</code> 作为工作区，这就导致了无论怎么删，系统都会源源不断地重新生成那个诡异的嵌套垃圾目录 <code>/home/ubuntu/.openclaw/.openclaw/</code> 。 <a href="https://docs.openclaw.ai/gateway">docs.openclaw</a></p>
+<h3 id="核心问题三环境重置后的连接断代">核心问题三：环境重置后的连接断代</h3>
+<p>在暴力清除了所有错乱的配置和进程后，网关和节点都恢复到了相当于“恢复出厂设置”的纯净状态。由于旧的设备身份令牌（Token）已不复存在，节点必须作为新设备重新向网关发起握手并申请授权，这就导致了连接初期的 <code>pairing required</code> 报错 。 <a href="https://docs.openclaw.ai/gateway/troubleshooting">docs.openclaw</a></p>
+<h3 id="终极解决步骤汇总">终极解决步骤汇总</h3>
+<p>如果未来再次遇到不明原因的 <code>unreachable</code> 或目录嵌套乱象，请直接按以下“四步走”执行物理级清理和重建：</p>
+<ol>
+<li><strong>斩杀系统级旧服务</strong>：<pre><code class="language-bash">sudo systemctl stop openclaw.service
+sudo systemctl disable openclaw.service
+sudo rm -f /etc/systemd/system/openclaw.service
+sudo systemctl daemon-reload
+</code></pre>
+</li>
+<li><strong>清理用户级服务与僵尸进程</strong>：<pre><code class="language-bash">systemctl --user stop openclaw-gateway.service
+systemctl --user stop openclaw-node.service
+sudo pkill -9 -f openclaw
+rm -rf /home/ubuntu/.openclaw/.openclaw/
+</code></pre>
+</li>
+<li><strong>重新安装纯净版服务</strong>：<pre><code class="language-bash">openclaw gateway install --force
+systemctl --user enable --now openclaw-gateway.service
+sleep 3
+openclaw node install --force
+systemctl --user enable --now openclaw-node.service
+</code></pre>
+</li>
+<li><strong>重新批准设备配对</strong>：<br>
+运行 <code>openclaw devices list</code> 获取处于 pending 状态的请求 ID，然后执行 <code>openclaw devices approve &lt;Request ID&gt;</code> 签发新令牌。</li>
+</ol>
+<p><strong>顺便把迁移过程也总结下吧。还是对Linux系统不熟悉，如果是Windows的就没这么费劲了…</strong></p>
+<p>以下这是一份 OpenClaw 从 <code>root</code> 迁移至普通用户 (<code>ubuntu</code>) 的排错复盘记录。整个过程虽然踩了一些坑，但也暴露出 Node.js/AI 代理类应用在跨用户迁移时最容易遇到的核心痛点。</p>
+<hr>
+<h1 id="openclaw-跨用户迁移排错记录-root-ubuntu">OpenClaw 跨用户迁移排错记录 (Root -&gt; Ubuntu)</h1>
+<h2 id="核心痛点与主要问题">📌 核心痛点与主要问题</h2>
+<p>在将 OpenClaw 数据目录从 <code>/root/.openclaw/</code> 物理移动到 <code>/home/ubuntu/.openclaw/</code> 后，我们主要遭遇了以下三个层面的“连环报错”：</p>
+<ol>
+<li><strong>“Missing config” 无限重启循环</strong>
+<ul>
+<li><strong>现象：</strong> 日志狂刷 <code>Missing config. Run openclaw setup or set gateway.mode=local</code>。</li>
+<li><strong>原因：</strong> 并非文件不存在，而是 Systemd 以新用户启动时，未能准确找到配置文件路径，或者配置文件内部缺失了最核心的 <code>gateway</code> 启动块。</li>
+</ul>
+</li>
+<li><strong>端口冲突 (Port 18789 is already in use)</strong>
+<ul>
+<li><strong>现象：</strong> Systemd 报错退出，日志显示 <code>Gateway failed to start: gateway already running (pid xxx)</code>。</li>
+<li><strong>原因：</strong> Systemd 在不断尝试重启 (<code>Restart=always</code>) 的过程中，由于权限或配置报错，导致旧的 Node.js 进程没有被干净地杀掉（变成了僵尸进程），一直霸占着 18789 端口，导致后续的新进程全军覆没。</li>
+</ul>
+</li>
+<li><strong>“幽灵路径”导致的权限拒绝 (EACCES: permission denied)</strong>
+<ul>
+<li><strong>现象：</strong> 即使所有环境变量都改了，在界面发消息或创建 Agent 时，依然报错试图创建目录 <code>/root/.openclaw/agents/main/sessions</code>。</li>
+<li><strong>原因：</strong> 即使指定了 <code>$HOME</code>，OpenClaw 系统中仍有优先级更高的配置文件（如 <code>gateway.config.js</code>）或本地 JSON 配置（<code>openclaw.json</code> 中的 <code>workspace</code>）硬编码了旧的 <code>/root</code> 绝对路径。程序顺着旧路径去写文件，被 Linux 权限系统拦截。</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="最终最有效的解决方案-checklist">✅ 最终最有效的解决方案 (Checklist)</h2>
+<p>如果未来需要再次迁移或部署，按照以下四步即可一次性解决问题，避免踩坑：</p>
+<h3 id="第一步彻底接管文件所有权">第一步：彻底接管文件所有权</h3>
+<p>仅仅使用 <code>mv</code> 或 <code>cp</code> 移动文件是不够的，必须确保新用户拥有所有子目录（特别是 <code>agents</code>, <code>workspace</code>, <code>sessions</code> 等）的绝对控制权：</p>
+<pre><code class="language-bash">sudo chown -R ubuntu:ubuntu /home/ubuntu/.openclaw
+</code></pre>
+<h3 id="第二步排查所有的硬编码路径">第二步：排查所有的“硬编码”路径</h3>
+<p>不要只看环境变量，必须清理配置文件中残留的旧路径：</p>
+<ol>
+<li><strong>修改 JSON 文件</strong> (<code>/home/ubuntu/.openclaw/openclaw.json</code>)：<br>
+确保 <code>agents.defaults.workspace</code> 等路径已经明确修改为 <code>/home/ubuntu/.openclaw/workspace</code>（切记不要乱加官方不支持的字段，如 <code>storage</code>）。</li>
+<li><strong>排查 JS 配置文件（隐形杀手）</strong>：<br>
+检查 <code>/home/ubuntu/.openclaw/gateway.config.js</code>，这个文件的优先级极高。如果里面硬编码了 <code>/root</code>，必须将其替换为 <code>/home/ubuntu</code>。</li>
+</ol>
+<h3 id="第三步斩断端口占用的死循环">第三步：斩断端口占用的死循环</h3>
+<p>如果陷入了 Systemd 不断报错重启的死循环，不要直接改配置重启，必须先“净空”环境：</p>
+<pre><code class="language-bash"># 1. 停掉系统服务
+sudo systemctl stop openclaw
+
+# 2. 查出谁在占用 18789 端口并强制击杀 (替换 &lt;PID&gt;)
+sudo lsof -i :18789
+sudo kill -9 &lt;PID&gt;
+</code></pre>
+<h3 id="第四步构建信息茧房式的-systemd-守护脚本">第四步：构建“信息茧房”式的 Systemd 守护脚本</h3>
+<p>这是解决“服务找不到配置”的最有效手段。不要指望程序自己去猜路径，必须在 <code>openclaw.service</code> 中把所有路径环境变量<strong>显式锁死</strong>。</p>
+<p>最稳妥的 <code>/etc/systemd/system/openclaw.service</code> 配置如下：</p>
+<pre><code class="language-ini">[Unit]
+Description=OpenClaw Gateway Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu
+# 强制覆盖环境变量，彻底切断与 root 的联系
+Environment=&quot;HOME=/home/ubuntu&quot;
+Environment=&quot;OPENCLAW_HOME=/home/ubuntu/.openclaw&quot;
+Environment=&quot;OPENCLAW_CONFIG_PATH=/home/ubuntu/.openclaw/openclaw.json&quot;
+# 启动命令
+ExecStart=/usr/bin/openclaw gateway --verbose
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p><em>(修改后需执行 <code>sudo systemctl daemon-reload</code> 和 <code>sudo systemctl start openclaw</code>)</em></p>
+<h3 id="避坑经验总结">💡 避坑经验总结</h3>
+<ol>
+<li><strong>不要盲目删数据</strong>：遇到报错时，不要轻易删除已经生成的 <code>agents</code> 或 <code>sessions</code> 目录。问题通常出在“指路牌（路径配置）”指错了，而不是“房子（数据文件）”坏了。</li>
+<li><strong>正确使用 CLI 命令</strong>：读取配置不需要带 <code>gateway</code>，正确语法是 <code>openclaw config get agents</code>。</li>
+<li><strong>区分静态配置和运行时环境</strong>：排错时，如果 Systemd 起不来，可以使用 <code>sudo -u ubuntu env -i HOME=/home/ubuntu ...</code> 来模拟干净环境排查，直接定位是服务脚本写错了还是程序本身的 Bug。</li>
+</ol>
+<h1 id="遇到的问题目前还没有着手解决的">遇到的问题目前还没有着手解决的：</h1>
+<ol>
+<li>如何修改主agent使用的模型：<br>
+之前一修改就挂掉，很诡异。</li>
+<li>如何配置备用模型：<br>
+按说主模型失效后会访问备用模型，官方都是有配置方式的，但就是不生效。</li>
+<li>如何设置多agent：<br>
+这个有思路，应该就是设置多个bot就可以。但不知道是否还有其它简便方式。</li>
+<li>如何在agent下设置多session：<br>
+这个也有思路，就是首先让bot可以接受群信息，然后拉bot到不同群，并获取到群id，通过不同地群id设置多个session，不同session执行不同地工作。不过这样session是否可以配置不同模型？我看后台是可以选择的，但按照目前openclaw的操行，是否能生效，未知，需要调试。</li>
+<li>如何设置一个主agent，然后让这个主agent根据任务特性来分配由哪个模型来完成任务。</li>
+</ol>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[折腾CosyVoice3]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/zhe-teng-cosyvoice3/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/zhe-teng-cosyvoice3/">
+        </link>
+        <updated>2025-12-25T16:02:28.000Z</updated>
+        <summary type="html"><![CDATA[<p>想在本地部署一个CosyVoice玩儿一下。其实挺简单的，只不过由于硬件环境+不熟悉Linux系统，导致折腾里好几遍。现在想想，还是自己太蠢了……总之，先记录下吧。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>想在本地部署一个CosyVoice玩儿一下。其实挺简单的，只不过由于硬件环境+不熟悉Linux系统，导致折腾里好几遍。现在想想，还是自己太蠢了……总之，先记录下吧。</p>
+<!-- more -->
+<p>先罗列下资源：<br>
+GitHub项目：<br>
+https://github.com/FunAudioLLM/CosyVoice</p>
+<p>参考视频：<br>
+【【AI音色克隆】超强AI音色克隆，CosyVoice，最新模型，速度超级快！附上本地安装教程！】 https://www.bilibili.com/video/BV1Dwx4e2ESu/?share_source=copy_web&amp;vd_source=4ea10cc08ac122b783b99dc60d34ca79</p>
+<p>【CosyVoice3 本地部署！声音克隆 TTS！支持9种语言，18种中文方言！消费级显卡可运行！】 https://www.bilibili.com/video/BV1cDqqBeEtN/?share_source=copy_web&amp;vd_source=4ea10cc08ac122b783b99dc60d34ca79</p>
+<p>第一遍折腾：<br>
+第一遍巨蠢，太依赖AI了。什么东西都没看，连GitHub项目地址都没细看，直接扔给AI（perplexity pro的GPT5.2），让它帮我解读并给出部署步骤。</p>
+<p>整体给的框架其实是对的，根据我的软硬件条件，给出了在WIN10下通过WSL和Docker部署的几个方式。然后我选了最蠢的docker部署……因为它说最简单…</p>
+<p>过程非常痛苦。因为我之前docker有部署一个本地的知识库，而且还把docker安装到了C盘。所以第一遍不只是部署项目，还加上了迁移docker，以及解决另一个超他妈奇怪的问题（局域网下，两台机器访问时会出现间歇性断开情况，这个问题也是巨逼奇怪！好在最后也算是不完美解决了，回头但开一个帖子记录下）。</p>
+<p>第一遍不细说了，算是让我对docker使用有了进一步了解吧~</p>
+<p>第二遍折腾：<br>
+改用WSL安装Ubuntu，然后部署项目。政体过程其实和docker差不多，也都要安装conda然后在独立环境下进行部署。<br>
+这一遍是按照资料中本地部署的视频来的。其实应该一遍搞定的，结果遇到了一个蠢死自己的小问题……Linux环境下对于大小写敏感，部署资料中给的原码CosyVoice这个子目录有两个大写字母，而代码中都用的是小写。AI也是蠢的可以，完全没给我说这种情况，然后指着它一同瞎几把改。改的我都想删环境了……虽然webui算是跑起来了，但模型上有问题，一直报错无法生成语音。</p>
+<p>第三遍折腾：<br>
+换了参考视频中第一条视频，改用在win10环境下，直接安装conda来部署。其实整体逻辑是一样的，都是通过conda来分离独立环境进行项目部署。只不过，这次傻逼在硬件环境上了……</p>
+<p>由于用的是RTX50系显卡，虽然cuda13和cuDNN的安装都没问题，但pytorch最新版本在WIN环境下对于50系显卡支持有问题，导致最终webui运行了，但模型仍然无法使用。</p>
+<p>第四遍折腾：<br>
+还是换回到WSL的Ubuntu环境了…<br>
+先来到之前clone好的项目文件下，git pull了最新的代码。因为之前的依赖都弄好了，所以这次只是改了下第二遍中那个愚蠢的大小写问题。<br>
+然后运行，遇到了新问题：关于音频编码。<br>
+这次AI倒是挺给力的（不得不说，遇到代码问题的情况下，还是Claude系比OpenAI的好使），直接给出具体的代码，最终使用soundfile库来生成文件。<br>
+哦对了，还有一个细节问题。原文件下几个主要的执行py文件，里边关于模型的code需要按照本地模型路径下的文件进行修改。<br>
+还有模型下载上，第二遍折腾时，WSL环境下的模型下载有点儿问题。AI分析日志后给出这个结论后，我用第三遍折腾时在WIN环境下载的模型做了替换后就正常了。其实环境本身不重要，应该还是我第二遍部署时出现的问题。</p>
+<p>最后：<br>
+玩儿了一阵子，这个项目还挺有趣，本地生成的速度也还可以。大约比官网生成的速度慢了一倍吧，但本地毕竟方便，消费级显卡跑这个项目绝对没问题。而且在GPU使用上，我觉得还是可以优化的。</p>
+<p>现在还有以下一些事项待解决&amp;实验：<br>
+1、用CosyVoice2 0.5B模型跑一下预训练语音，尝试用instruction的方式来生成一下。<br>
+2、清理win环境下miniconda部署残留。后续还是决定用wsl来搞了，得把miniconda清理一下。而且我还在win下单独安装cuda和cuDNN，留着吧也行，但感觉用处不大，纯占空间。<br>
+3、清理docker环境下的部署残留。我还把本地知识库给搞废了，还得重新部署一下。<br>
+4、解决下局域网其它客户机对于当前项目的访问问题。我的常用客户端是可以访问的，但还有一个端访问起来有些异常，应该不是很难解决的事儿吧，我猜…</p>
+<p>虽然够折腾，但收获也还是有的，最终结果也还不错，算是一次得到正反馈的实验吧。加油！</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[精粤B550i主板升级Zotac RTX5060记录]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/jing-yue-b550i-zhu-ban-sheng-ji-zotac-rtx5060-ji-lu/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/jing-yue-b550i-zhu-ban-sheng-ji-zotac-rtx5060-ji-lu/">
+        </link>
+        <updated>2025-11-08T23:59:34.000Z</updated>
+        <summary type="html"><![CDATA[<p>这5060的卡真是折腾死我了！幸亏结果是好的，这里做个记录汇总下。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>这5060的卡真是折腾死我了！幸亏结果是好的，这里做个记录汇总下。</p>
+<!-- more -->
+<p>前情概述：<br>
+之前自己攒了一台itx主机，就为了小巧轻便。之前攒主要是玩儿游戏用的，所以整体配置中等吧，走了一套全AMD的架构，R5 5600+RX 5600 6G短卡，搭配精粤B550i主板。双16G内存，500W全模组1U电源。其实这套整体性能表现还是可以的，除了FF7 REMAKE II这种完全不支持老卡的游戏外，能够应对绝大多数游戏了。<br>
+如今需求升级，还想要搞一些AI方面相关的东西，跑个本地模型啥的。这么一来，RX 5600这个卡就比较拉胯了。虽然ollama也有魔改支持AMD老卡的，但整体的执行效率一般，比有cuba加持的N卡或者新一些的A卡，那还是有不小距离。经过权衡比较，在25年8月入手了一块Zotac 5060的短卡——主要是符合itx结构的短卡太难找了。当然，这个卡主要是便宜，含税后合RMB也就2k，比拼多多上的同级别显卡便宜不少。</p>
+<p>入手后开始第一次折腾。<br>
+itx由于空间小，那是正经的难装又难拆。第一次折腾，花了差不多1天时间，其中大半时间都用来插拔硬件了…<br>
+之前没有用过DDU，这次也是头回用。倒是不复杂，进入安全模式先卸载A卡驱动，然后关机换卡，最后直接进系统下载最新N卡驱动安装。到这里，一切正常。我想着应该没啥问题了，就齐齐整整的把机器装回去了。<br>
+然后……想起来跑一下烤机测试啥的东西。于是先用了AIDA64里的GPGPU的benchmark，具体跑哪儿忘了，可能是显存测试还是哪里就会卡住，当然可能是版本老加上卡比较新，GPGPU并没有检测出卡有OpenGL支持。我想着能凑合用就先用吧，于是就重新装好机器，然后把所有外设插上了（除了机器内插着的两块ssd和一块2.5寸ide外，还有两块3.5和一个2.5的移动存储），进入系统后就出现间歇性卡死的情况。<br>
+经过一番和AI的沟通，初步判断是500w电源的问题。理论上是够用的，毕竟从设计功率上看，5060也就比RX5600多了个20w的耗电，但是外设一多再加上峰值功率，可能还是有些吃紧。如果当时我换成550W的电源应该就比较稳了。（BTW：我用的是游戏引力的电源，网上评价是没有虚标，整体表现不错）于是我就一咬牙，直接换了同品牌700W电源，这下就算真有虚标也是够用了的。</p>
+<p>经过两个月等待，700W电源终于运来了，这便开始了第二次折腾。<br>
+首先第一个问题是，电源。<br>
+<img src="https://ntsilverwing.github.io/blog//post-images/1762757477626.png" alt="" loading="lazy"><br>
+（电源口排线见图）<br>
+其实也不是什么大问题，只是商家给的线比较迷惑。给了两根一样的PCI-E的线，然后24pin线上有一根写着CPU，而且还有个单独标有CPU的6pin口。之前500W电源是14pin然后CPU是单独一组2+2的口。后边我咨询AI，说是700w这种较大功率电源，一般是对应多CPU的，同时PCI-E的线虽然看起来也能插到CPU的6pin口，但由于里边的排线可能不同，所以建议不要混用。于是我就直接用24pin线的那根CPU头直接插到主板CPU供电口，单独的CPU口留空，顺利点亮。<br>
+相比插线来说，拔线简直是难一万倍！尤其是ITX的线！一个是空间小，伸手费劲；另一个就是插口太紧！最后是拿着小平头螺丝，边撬边拔，才给弄下来💀</p>
+<p>顺利点亮后，换卡，运行，正常。这次长记性了，没有先把机器装回去，直接烤机。用fur mark大约烤了5分钟，一切正常。这回总能装回去了吧！装好后，遇到了第二个问题，间歇性黑屏！<br>
+真的是艹了……顶着幸运光环开始看黑屏前后的系统日志，喂给AI帮我解读，终于看到有个日志是说显卡驱动问题的。问题锁定到显卡本身，然后各种查资料，咨询AI。<br>
+发现50系显卡在一些老板子上黑屏（甚至新板子也会）并不是个例，还是挺普遍的一个情况。网上常见的解决方法大致有这几个：<br>
+1、主板上PCI-E速率改成GEN2（也有说改GEN4的）；<br>
+2、如果是DP线，则换成HDMI的；<br>
+3、还有金手指接触问题的，要使劲儿插才行；<br>
+4、显卡驱动不能装最新的，要装某个版本的；<br>
+5、……还有什么记不清了，反正50系还真的挺拉的，啥破问题都有。<br>
+我觉得这些不太对应我的问题。然后咨询AI的过程中，它有搜到redit上一个帖子，我进到原帖（https://www.reddit.com/r/buildapc/comments/1k1hhce/black_screen_after_first_time_installing_drivers/）看了下，有个回复还是很系统的，大致如下：<br>
+1、保持主板BIOS固件是最新的，设置UEFI启动，然后关闭CSM兼容支持；<br>
+2、更新显卡vBIOS。</p>
+<p>回归到我的设备上，我找了精粤官网，对于B550i并没有特别新的BIOS固件，最新的就是24年11月底的一个（https://jginyue.com.cn/index/Article/show/cat_id/43/id/128）。倒是Zotac有一个vBIOS更新UEFI Firmware Update Tool for RTX 5060 Series（https://www.zotac.com/ca/files/download/by_product?p_nid=1361402&amp;driver_type=All&amp;os=All），就是专门解决间歇性黑屏掉信号的问题的，应该是直接改的nVidia官方补丁。</p>
+<p>这两个固件更新操作都挺简单的，尤其是索泰的vBIOS更新，简单到可怕……差点儿就忘记用GPU-Z备份BIOS了。不过我更新主板固件时，还是有些冒进了。最稳妥的是换回老显卡，然后再更新，这样确保不会发生突然掉信号的情况。而且，精粤的这个主板更新后，PCI-E的速率最高也就GEN2，并不是像页面描述的说固定到GEN3。所以我其实改不改速率应该都没很大影响。<br>
+解决问题的关键应该还是显卡的vBIOS更新。这个更新解决了UEFI的硬件握手问题，避免间歇性黑屏发生。</p>
+<p>更新完后跑了一下午黑悟空，又看了一部哈利波特，没出现任何黑屏问题。看来是终于稳定了~</p>
+<p>最后吐槽50系显卡。怎么问题多成这样？早知道我直接换AMD的同级别卡了，估计也没这没费劲的。</p>
+<p>哦对了，按说关闭CSM兼容支持，硬盘如果有MBR分区的，可能兼容上有些问题，最好都是GPT分区的。这个也是折腾了一阵子，先用微软自己的转分区命令找了个下载盘实验下，失败…于是准备找第三方的，结果都是付费功能才有无损转分区的。目前也都还没转区，不过也用的好好的，算了，不折腾了~</p>
+<p>以上。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Ryujinx（龙神）模拟器如何用CE修改器]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ryujinxlong-shen-mo-ni-qi-ru-he-yong-ce-xiu-gai-qi/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ryujinxlong-shen-mo-ni-qi-ru-he-yong-ce-xiu-gai-qi/">
+        </link>
+        <updated>2025-09-23T06:48:02.000Z</updated>
+        <summary type="html"><![CDATA[<p>找不到对应游戏的金手指？找到了金手指又无法生效？这个时候就只能用Cheat Engine来修改了~</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>找不到对应游戏的金手指？找到了金手指又无法生效？这个时候就只能用Cheat Engine来修改了~</p>
+<!-- more -->
+<p>然而……如果用Ryujinx模拟的话，CE修改是找不到真实地址的。</p>
+<p>“那，你可以用yuzu啊！”<br>
+确实，用柚子的话，CE正常修改是可以找到真实地址的。但由于全球最强的任地狱法务部，柚子已经没有可用更新了，所以它在游戏支持度和模拟效果上，没有龙神表现的那么好。（虽然，龙神也被干了，但还是有在持续更新的……希望，可以坚持下去！）</p>
+<p>好了，总之我就是要用龙神就对了。那么，如何让CE可以正常找到真实地址呢？</p>
+<p>很简单：<br>
+在System-&gt;Memory Manager Mode的设置下，把内存管理模式改为Software就可以了！</p>
+<p>OK，就这么简单，然后CE就可以正常修改了。</p>
+<p>如果配置比较菜，那么改成software后，FPS会变的特别低，甚至到无法正常游戏的程度。那么，最好就是修改后马上保存，然后重新把内存管理模式改回去。</p>
+<p>以上是准备修改“浪漫沙加2 七英雄的复仇”时遇到的问题，在网上找了一遍并尝试后，这是最靠谱儿的方法了。<br>
+btw：这游戏1.1版本的金手指在龙神下没有一个管用的！淦！</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[如何让ollama支持老款AMD显卡]]></title>
+        <id>https://ntsilverwing.github.io/blog/post/ru-he-rang-ollama-zhi-chi-lao-kuan-amd-xian-qia/</id>
+        <link href="https://ntsilverwing.github.io/blog/post/ru-he-rang-ollama-zhi-chi-lao-kuan-amd-xian-qia/">
+        </link>
+        <updated>2025-09-15T15:03:16.000Z</updated>
+        <summary type="html"><![CDATA[<p>有一块RX 5600，想用来做一些AI方面的小实验，但是ollama官方默认不支持老款AMD显卡，不过还要有一些民间改版可以用。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>有一块RX 5600，想用来做一些AI方面的小实验，但是ollama官方默认不支持老款AMD显卡，不过还要有一些民间改版可以用。</p>
+<!-- more -->
+<p>分享一下win10系统下具体的实操过程以及一些坑。</p>
+<p>废话不多说，以下是具体步骤：<br>
+1、运行ollama后，先右键图标，view log一下。<br>
+查看server.log文件，找到大约第八行，有一条msg“amdgpu is not supported”，这就代表当前显卡不被支持。然后再看后边具体的显卡型号，比如我的是gpu_type=gfx1010:xnack- 。ok，记下来即可。</p>
+<p>2、退出ollama，然后到github找到“ollama-for-amd”这个项目（https://github.com/likelovewant/ollama-for-amd），直接去release里找到最新的版本下载。<br>
+下载安装版或者压缩版都可以，就是一个覆盖过程。我下载的是解压版。找到ollama具体的安装目录，然后把压缩包里的东西直接覆盖到安装目录下即可。</p>
+<p>3、然后再到github找“ROCmLibs-for-gfx1103-AMD780M-APU”这个项目（https://github.com/likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU），到release中下载最新版。<br>
+当然，最好看一下具体支撑自己gpu type的版本。我的最新版有支持，所以直接下最新的。下载完毕后解压，找到ollama安装目录，直接将解压文件copy至对应的目录下。</p>
+<p>4、重新运行ollama，再看下server.log文件。<br>
+还是第八行，如果有看到name参数后有自己显卡的具体名称，则代表已经支撑了。<br>
+然后随便运行一个模型，然后用ollama ps命令看一下，如果有看到processor有类似“39%/61% CPU/GPU”，那就确定GPU有参与到运行了。如果还是100%CPU，那就是失败，再找原因吧~</p>
+<p>好了，至此可以跑下具体模型，观察下gpu占用情况了。</p>
+<p>有一些使用上的感受/坑，记录下。<br>
+1、整体速度上有变快，但显卡整体还是拉胯，能有多明显也谈不上，跑一下小模型（比如：deepseek14b）可能还能看出来，跑稍微大一些的（如：openai的oss20b）那还是挺慢的。</p>
+<p>2、大模型一定要装在ssd中！机械硬盘的载入速度太慢了！</p>
+<p>3、如果ollama有升级，建议不要更新！当然，这个比较难。目前没有特别好的办法。<br>
+方法1：将ollama目录设置为只读。不过这会影响日志写入，并产生其它问题。<br>
+方法2：防火墙层面断掉ollama的互联网链接。这个问题就是载入模型后无法联网了。不过如果纯本地模型的话，这个倒也OK。<br>
+总之，如果有更新导致amd显卡支持问题，那就按照上述办法覆盖一遍吧。</p>
+<p>4、整体来说AMD显卡——尤其老显卡的模型运行效率不太行，玩儿AI的话，还是建议换N卡吧~</p>
+]]></content>
+    </entry>
+</feed>
