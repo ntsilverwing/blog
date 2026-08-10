@@ -1,0 +1,263 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    
+<meta charset="utf-8" >
+
+<title>三国志9威力加强版（SAN9PK）Win11 部分文字不显示：一次文件缺失问题的排查记录 | 宇宙中的粒子</title>
+<meta name="description" content="随想、碎念、燧知">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://ntsilverwing.github.io/blog//favicon.ico?v=1786347310817">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://ntsilverwing.github.io/blog//styles/main.css">
+
+
+  
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css" />
+  
+
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://ntsilverwing.github.io/blog/">
+        <img class="avatar" src="https://ntsilverwing.github.io/blog//images/avatar.png?v=1786347310817" alt="" width="32px" height="32px">
+      </a>
+      <a href="https://ntsilverwing.github.io/blog/">
+        <h1 class="site-title">宇宙中的粒子</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
+  </div>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://ntsilverwing.github.io/blog/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+            <div class="feature-container" style="background-image: url('https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/628050/header_schinese.jpg?t=1760588402')">
+            </div>
+          
+          <h2 class="post-title">三国志9威力加强版（SAN9PK）Win11 部分文字不显示：一次文件缺失问题的排查记录</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2026-08-08</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://ntsilverwing.github.io/blog/tag/_MzrTBCLCI/">
+                    游戏
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content" v-pre>
+            <p>在 Windows 11 上运行《三国志9威力加强版》时，san9pk.exe 出现武将名等部分文字不显示，而普通版 san9.exe 正常。最终确认并非兼容模式、字体或编码问题，而是 PK 版专用数据文件缺失。</p>
+<!-- more -->
+<h2 id="问题现象">问题现象</h2>
+<p>在 Windows 11 上运行《三国志9》时，普通版 <code>san9.exe</code> 显示完全正常；但运行威力加强版 <code>san9pk.exe</code> 后，游戏中有一部分文字无法显示，例如武将姓名等。</p>
+<p>最初我怀疑是以下原因：</p>
+<ul>
+<li>Windows 11 与老游戏的兼容性问题</li>
+<li>系统字体没有被正确加载</li>
+<li>简繁体编码或非 Unicode 程序区域设置问题</li>
+<li>启动程序时没有正确读取游戏目录中的资源</li>
+</ul>
+<p>我已经将 <code>san9pk.exe</code> 设为 Windows 7 兼容模式运行，但问题仍然存在。同时，由于普通版文字正常，且 PK 版只是部分特定文字缺失，因此基本可以排除普遍性的字体、转码或系统显示问题。</p>
+<h2 id="最终原因">最终原因</h2>
+<p>最终确认，问题不是 Windows 11、兼容模式或字体安装造成的，而是 <strong>PK 版专用的 S9 数据文件不完整</strong>。</p>
+<p>缺失的关键文件是：</p>
+<pre><code class="language-text">M_MsgPK.s9
+M_RtdnPK.s9
+</code></pre>
+<p>其中，<code>M_MsgPK.s9</code> 是最关键的文件之一，PK 版中不少文字资料（包括武将名等）需要由它提供。文件缺失后，<code>san9pk.exe</code> 虽然仍能启动，但相关文字资源无法正常读取，于是出现“部分文字空白”的现象。</p>
+<p><code>M_RtdnPK.s9</code> 同样属于 PK 版对应的资料文件，也应与 PK 版程序一起保留，不能缺失或混用普通版文件。</p>
+<h2 id="修复方法">修复方法</h2>
+<p>修复方式很简单：找一份<strong>完整、同版本的三国志9威力加强版文件</strong>，将缺失的 PK 数据文件补回游戏目录。</p>
+<p>我的游戏目录为：</p>
+<pre><code class="language-text">C:\Game\San9PK
+</code></pre>
+<p>补齐后，应确认目录中至少包含以下 PK 相关文件：</p>
+<pre><code class="language-text">M_RtdnPK.s9
+M_MsgPK.s9
+D_FcPtPK.s9
+G_EditPK.s9
+G_FacPK.s9
+G_FacTPK.s9
+G_KLgPK.s9
+G_LocCPK.s9
+G_LocMPK.s9
+G_LocSPK.s9
+G_MpMkPK.s9
+G_StilPK.s9
+G_StrtPK.s9
+G_TitlPK.s9
+</code></pre>
+<p>这次补齐的完整 PK 版 S9 文件共有约 15 个，51.1M。文件放回 <code>san9pk.exe</code> 所在目录后，再直接运行 <code>san9pk.exe</code>，原先缺失的武将名等文字即可恢复正常。</p>
+<h2 id="排查经验">排查经验</h2>
+<p>这次问题的重点是：<strong>不要看到文字不显示，就立刻认定是字体或编码问题。</strong></p>
+<p>如果出现下面这种情况：</p>
+<ul>
+<li><code>san9.exe</code> 正常</li>
+<li><code>san9pk.exe</code> 可以启动</li>
+<li>只有 PK 版的部分文字不显示</li>
+<li>缺失内容集中在武将名、PK 功能资料或某一类特定文本</li>
+</ul>
+<p>那么优先检查游戏目录中的 PK 专用资源文件是否齐全，特别是名称包含 <code>PK</code> 的 <code>.s9</code> 文件，以及：</p>
+<pre><code class="language-text">M_MsgPK.s9
+M_RtdnPK.s9
+
+&lt;!-- more --&gt;
+
+</code></pre>
+<p>另外，不建议直接把普通版的 <code>M_Msg.s9</code> 改名成 <code>M_MsgPK.s9</code> 使用。普通版与威力加强版的数据内容和索引可能不同，正确做法是从<strong>同一套、同一版本的 PK 完整文件</strong>中恢复缺失文件。</p>
+<h2 id="结论">结论</h2>
+<p>本次“三国志9威力加强版文字不显示”的根因是 <strong>PK 版 S9 资源文件缺失</strong>，而不是 Win11 兼容性、字体或乱码问题。</p>
+<p>补回 <code>M_MsgPK.s9</code>、<code>M_RtdnPK.s9</code>，并确保整套 PK 版 <code>.s9</code> 文件完整且版本一致后，问题解决。</p>
+<p>以后遇到类似老游戏“程序能启动、但部分文字或资料为空”的情况，可以先检查：</p>
+<ol>
+<li>主程序和资源包是否来自同一版本。</li>
+<li>是否少了解压文件或被杀毒软件误删文件。</li>
+<li>是否安装过不完整的汉化包、MOD 或覆盖补丁。</li>
+<li>游戏目录内是否混入了普通版与 PK 版的文件。</li>
+</ol>
+<blockquote>
+<p>一句话总结：<code>san9pk.exe</code> 能运行不代表 PK 数据文件齐全；缺少 <code>M_MsgPK.s9</code> 时，武将名等部分文字就可能直接不显示。</p>
+</blockquote>
+
+          </div>
+        </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://ntsilverwing.github.io/blog/post/zai-ubuntu-yuan-sheng-jellyfin-bei-mei-roku-tv-shang-jie-jue-zhong-wen-zi-mu-xian-shi-fang-kuai-yi-ci-wan-zheng-pai-zhang-ji-lu/">
+              <h3 class="post-title">
+                下一篇：在 Ubuntu 原生 Jellyfin + 北美 Roku TV 上解决中文字幕显示方块：一次完整排障记录
+              </h3>
+            </a>
+          </div>
+          
+      </div>
+
+      
+        
+          <div id="gitalk-container"></div>
+        
+
+        
+      
+
+      <div class="site-footer">
+  <div class="slogan">随想、碎念、燧知</div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://ntsilverwing.github.io/blog//atom.xml" target="_blank">RSS</a>
+</div>
+
+
+    </div>
+    <script type="application/javascript">
+
+hljs.initHighlightingOnLoad()
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+  
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+    <script>
+
+      var gitalk = new Gitalk({
+        clientID: 'a5a4a5dc82dc6c6b2676',
+        clientSecret: 'eb43a322d37cc2ebdf3265f57c84b9898e6c5123',
+        repo: 'blog',
+        owner: 'ntsilverwing',
+        admin: ['ntsilverwing'],
+        id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+      })
+
+      gitalk.render('gitalk-container')
+
+    </script>
+  
+
+  
+
+
+
+
+  </body>
+</html>
